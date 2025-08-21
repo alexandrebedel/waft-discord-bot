@@ -1,11 +1,11 @@
 import { join } from "node:path";
-import type { IWAFTCommand } from "../types/commands";
 import { CLIENT_ID, discordClient, GUILD_ID, rest } from "../lib/discord";
 import {
   Collection,
   Routes,
   type RESTPostAPIChatInputApplicationCommandsJSONBody,
 } from "discord.js";
+import type { IWAFTCommand } from "../types/commands";
 
 const glob = new Bun.Glob("src/commands/utility/*.ts");
 const commands: RESTPostAPIChatInputApplicationCommandsJSONBody[] = [];

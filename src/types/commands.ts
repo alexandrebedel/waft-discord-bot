@@ -1,6 +1,9 @@
-import type { Interaction, SlashCommandBuilder } from "discord.js";
+import type { Interaction, SlashCommandOptionsOnlyBuilder } from "discord.js";
 
-export interface IWAFTCommand<THandlerReturn = void> {
-  command: SlashCommandBuilder;
+export interface IWAFTCommand<
+  TCommand = SlashCommandOptionsOnlyBuilder,
+  THandlerReturn = void
+> {
+  command: TCommand;
   handler(interaction: Interaction): Promise<THandlerReturn>;
 }

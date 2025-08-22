@@ -1,5 +1,3 @@
-import type { BunRoutes } from "../constants";
+import type { RouterTypes } from "bun";
 
-export interface IWAFTRoute<TRoute extends string> extends BunRoutes<TRoute> {
-  readonly path: TRoute;
-}
+export type BunRoutes<T extends string> = RouterTypes.RouteHandlerObject<T>;

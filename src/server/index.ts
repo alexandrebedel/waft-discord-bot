@@ -1,27 +1,33 @@
+import { FileSystemRouter, type RouterTypes } from "bun";
+import { join } from "node:path";
 import { HTTP_METHODS } from "../constants";
-import type { IWAFTRoute } from "../types/routes";
-import * as routes from "./routes";
 
-export function buildRoutesFromModule() {
-  const localRoutes: Record<string, any> = {};
+type HandlerModule = Partial<
+  Record<RouterTypes.HTTPMethod, RouterTypes.RouteHandler<string>>
+>;
 
-  for (const [_, route] of Object.entries(routes)) {
-    const instance: IWAFTRoute<string> = new (route as any)();
+export const router = new FileSystemRouter({
+  dir: join(import.meta.dir, "/api"),
+  style: "nextjs",
+});
 
-    if (!instance?.path || typeof instance.path !== "string") {
-      continue;
-    }
+const handlerCache = new Map<string, HandlerModule>();
 
-    const path = instance.path;
+await Promise.all(
+  Object.entries(router.routes).map(async ([routePath, filePath]) => {
+    const entry: HandlerModule = {};
+    const module = (await import(filePath)) as HandlerModule;
 
-    localRoutes[path] ||= {};
-    for (const m of HTTP_METHODS) {
-      const fn = instance[m];
+    for (const method of HTTP_METHODS) {
+      const fn = module[method];
 
       if (typeof fn === "function") {
-        localRoutes[path][m] = fn.bind(instance);
+        entry[method] = fn;
       }
     }
-  }
-  return localRoutes;
-}
+    handlerCache.set(filePath, entry);
+    return routePath;
+  })
+).then((v) => console.log(`Preloaded routes: ${v.join(", ")}`));
+
+export { handlerCache };

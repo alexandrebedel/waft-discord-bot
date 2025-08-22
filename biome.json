@@ -12,6 +12,9 @@
       },
       "suspicious": {
         "noDebugger": "warn"
+      },
+      "style": {
+        "noNonNullAssertion": "info"
       }
     }
   },

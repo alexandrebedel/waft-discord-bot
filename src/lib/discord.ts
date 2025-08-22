@@ -1,11 +1,7 @@
 import { Client, GatewayIntentBits, REST } from "discord.js";
 
 const client = new Client({
-  intents: [
-    GatewayIntentBits.Guilds,
-    GatewayIntentBits.GuildMessages,
-    GatewayIntentBits.MessageContent,
-  ],
+  intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages],
 });
 
 export const DISCORD_TOKEN = process.env.DISCORD_TOKEN!;

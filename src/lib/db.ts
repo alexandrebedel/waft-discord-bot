@@ -28,7 +28,7 @@ export function dbState() {
 }
 
 export async function dbCleanup() {
-  if (dbState().connected) {
+  if (state.connected) {
     await mongoose.disconnect();
     console.log("🛑 MongoDB disconnected");
   }

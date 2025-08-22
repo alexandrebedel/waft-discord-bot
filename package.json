@@ -16,6 +16,7 @@
   "dependencies": {
     "discord.js": "^14.22.0",
     "googleapis": "^156.0.0",
-    "mongoose": "^8.17.2"
+    "mongoose": "^8.17.2",
+    "zod": "^4.0.17"
   }
 }

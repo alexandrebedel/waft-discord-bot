@@ -1,20 +1,14 @@
-import {
-  CLIENT_ID,
-  DISCORD_TOKEN,
-  discordClient,
-  GUILD_ID,
-  rest,
-} from "./lib/discord";
-import './commands';
+import { DISCORD_TOKEN, discordClient } from "./lib/discord";
+import { buildRoutesFromModule } from "./server";
+import "./commands";
 
 discordClient.once("clientReady", (client) => {
   console.log(`✅ Bot connecté en tant que ${client.user?.tag}`);
 });
 
-discordClient.on("messageCreate", (msg) => {
-  if (msg.content === "!ping") {
-    msg.reply("pong 🏓");
-  }
-});
-
 discordClient.login(DISCORD_TOKEN);
+
+Bun.serve({
+  port: 3000,
+  routes: buildRoutesFromModule(),
+});

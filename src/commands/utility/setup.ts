@@ -1,8 +1,15 @@
-import { MessageFlags, SlashCommandBuilder, type Interaction } from "discord.js";
+import {
+  MessageFlags,
+  SlashCommandBuilder,
+  type Interaction,
+  type SlashCommandOptionsOnlyBuilder,
+} from "discord.js";
 import type { IWAFTCommand } from "../../types/commands";
 import { assertTextChannel } from "../../utils";
 
-export default class SetupCommand implements IWAFTCommand {
+type ISetupCommand = IWAFTCommand<SlashCommandOptionsOnlyBuilder>;
+
+export default class SetupCommand implements ISetupCommand {
   public command = new SlashCommandBuilder()
     .setName("setup")
     .setDescription(

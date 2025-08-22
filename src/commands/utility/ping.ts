@@ -1,4 +1,4 @@
-import { SlashCommandBuilder, type Interaction } from "discord.js";
+import { type Interaction, SlashCommandBuilder } from "discord.js";
 import type { IWAFTCommand } from "../../types/commands";
 
 export default class PingComand implements IWAFTCommand {

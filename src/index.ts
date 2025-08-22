@@ -1,7 +1,8 @@
 import { DISCORD_TOKEN, discordClient } from "./lib/discord";
 import "./commands";
-import { handlerCache, router } from "./server";
 import type { RouterTypes } from "bun";
+import { dbCleanup, dbConnect } from "./lib/db";
+import { handlerCache, router } from "./server";
 
 discordClient.once("clientReady", (client) => {
   console.log(`✅ Bot connecté en tant que ${client.user?.tag}`);
@@ -9,6 +10,10 @@ discordClient.once("clientReady", (client) => {
 
 discordClient.login(DISCORD_TOKEN);
 
+// TODO: some kind of bot disable when the db is not connected
+await dbConnect();
+
+// TODO: integrate middleware chain
 Bun.serve({
   port: Number(process.env.PORT || 3000),
   async fetch(req) {
@@ -37,3 +42,5 @@ Bun.serve({
     }
   },
 });
+
+process.on("exit", () => dbCleanup());

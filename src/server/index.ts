@@ -2,16 +2,13 @@ import { FileSystemRouter, type RouterTypes } from "bun";
 import { join } from "node:path";
 import { HTTP_METHODS } from "../constants";
 
-type HandlerModule = Partial<
-  Record<RouterTypes.HTTPMethod, RouterTypes.RouteHandler<string>>
->;
+type HandlerModule = RouterTypes.RouteHandlerObject<string>;
 
+const handlerCache = new Map<string, HandlerModule>();
 export const router = new FileSystemRouter({
   dir: join(import.meta.dir, "/api"),
   style: "nextjs",
 });
-
-const handlerCache = new Map<string, HandlerModule>();
 
 await Promise.all(
   Object.entries(router.routes).map(async ([routePath, filePath]) => {

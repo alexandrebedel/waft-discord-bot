@@ -1,10 +1,10 @@
 import { join } from "node:path";
-import { CLIENT_ID, discordClient, GUILD_ID, rest } from "../lib/discord";
 import {
   Collection,
-  Routes,
   type RESTPostAPIChatInputApplicationCommandsJSONBody,
+  Routes,
 } from "discord.js";
+import { CLIENT_ID, discordClient, GUILD_ID, rest } from "../lib/discord";
 import type { IWAFTCommand } from "../types/commands";
 
 const glob = new Bun.Glob("src/commands/utility/*.ts");

@@ -9,9 +9,9 @@ import { assertTextChannel } from "../../utils";
 
 type ISetupCommand = IWAFTCommand<SlashCommandOptionsOnlyBuilder>;
 
-export default class SetupCommand implements ISetupCommand {
+export default class CreateCommand implements ISetupCommand {
   public command = new SlashCommandBuilder()
-    .setName("setup")
+    .setName("create")
     .setDescription(
       "Create/update the planning message for this EP in the current channel."
     )

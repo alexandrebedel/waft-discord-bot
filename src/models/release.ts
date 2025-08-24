@@ -6,11 +6,6 @@ import { model, Schema } from "mongoose";
 const ReleaseSchema = new Schema(
   {
     catalog: { type: String, required: true, unique: true },
-    series: {
-      type: String,
-      enum: ["FDL", "COMP", null], // null = mainline
-      default: null,
-    },
     type: {
       type: String,
       enum: RELEASE_TYPES.map((v) => v.value),

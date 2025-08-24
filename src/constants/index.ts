@@ -1,5 +1,7 @@
 import type { RouterTypes } from "bun";
 
+export type ReleaseType = typeof RELEASE_TYPES[number]['value'];
+
 export const HTTP_METHODS = [
   "GET",
   "POST",

@@ -1,7 +1,9 @@
+import { RELEASE_TYPES, type ReleaseType } from "@waft/constants";
 import { CommandHandler } from "@waft/decorators";
+import { config } from "@waft/lib";
 import { Release } from "@waft/models";
 import type { IWAFTCommand, WAFTCommandInteraction } from "@waft/types";
-import { inferSeries } from "@waft/utils";
+import { pad } from "@waft/utils";
 import { sendMessageToReleaseChannel } from "@waft/utils/discord";
 import { type CreateReleaseZod, createReleaseZ } from "@waft/validation";
 import {
@@ -9,7 +11,6 @@ import {
   SlashCommandBuilder,
   type SlashCommandOptionsOnlyBuilder,
 } from "discord.js";
-import { ZodError } from "zod";
 
 type ISetupCommand = IWAFTCommand<SlashCommandOptionsOnlyBuilder>;
 
@@ -21,64 +22,88 @@ export default class CreateCommand implements ISetupCommand {
     )
     .addStringOption((o) =>
       o
+        .setName("type")
+        .setDescription("Type of release")
+        .setRequired(true)
+        .addChoices(...RELEASE_TYPES)
+    )
+    .addStringOption((o) =>
+      o
         .setName("name")
         .setDescription("EP name, e.g. Free DL Series Vol.4")
         .setRequired(true)
     )
-    .addStringOption((o) =>
+    .addIntegerOption((o) =>
       o
         .setName("catalog")
-        .setDescription("Catalog name, e.g. WAFT001, WAFT-FDL005")
+        .setDescription("Catalog number")
         .setRequired(true)
+        .setMinValue(1)
     );
 
   @CommandHandler()
   public async handler(interaction: WAFTCommandInteraction) {
-    const channel = interaction.channel;
+    const type = interaction.options
+      .getString("type", true)
+      .trim() as ReleaseType;
     const name = interaction.options.getString("name", true).trim();
-    const catalog = interaction.options.getString("catalog", true).trim();
-    const result = await this.parseCommands(name, catalog, interaction);
+    const catNumber = interaction.options.getInteger("catalog", true);
 
-    if (!result.ok) {
-      await interaction.editReply(`❌ ${result.msg}`);
-      return;
+    const catalog =
+      type === "FDL" || type === "COMP"
+        ? `WAFT-${type}${pad(catNumber, 3)}`
+        : `WAFT${pad(catNumber, 3)}`;
+
+    const result = await this.parseCommands(type, name, catalog);
+    const document = await Release.create(result);
+    const message = await sendMessageToReleaseChannel({
+      content: [
+        `✨ **${catalog} — ${name} — Planning** ✨`,
+        "",
+        "Calendrier des sorties",
+        "Merci d'updater l'état de vos tracks (fichier master, pochette, etc.) pour que tout roule 👌",
+      ].join("\n"),
+    });
+
+    // TODO: clean this part
+    try {
+      await message.pin();
+    } catch {}
+
+    let threadId: string | undefined;
+    try {
+      const thread = await message.startThread({
+        name: `${catalog} — discussion`.slice(0, 100),
+        autoArchiveDuration: 10080, // 7 jours
+      });
+      threadId = thread.id;
+    } catch {}
+
+    document.planningMessageId = message.id;
+    if (threadId) {
+      document.threadId = threadId;
     }
-
-    const document = await Release.create(result.data);
-
     await document.save();
     await interaction.editReply({
       content:
-        `✅ Planning set for **${name}** in <#${channel.id}>` +
-        `\n💬 Thread: <#${1}>`,
+        `✅ Planning créé pour **${name}** \`(${catalog})\` dans <#${message.channelId}>` +
+        `\n📝 [Voir le message](${message.url})` +
+        (threadId ? `\n💬 Thread: <#${threadId}>` : ""),
     });
-    await sendMessageToReleaseChannel("Yoooo");
   }
 
   private async parseCommands(
+    type: ReleaseType,
     name: string,
-    catalog: string,
-    interaction: Interaction
+    catalog: string
   ) {
     const payload: CreateReleaseZod = {
       catalog,
-      series: inferSeries(catalog),
-      type: "EP",
+      type,
       title: name,
-      channelId: interaction.channel!.id,
+      channelId: config.discordReleaseChannelId,
     };
 
-    try {
-      const data = createReleaseZ.parse(payload);
-
-      return { ok: true, data };
-    } catch (err) {
-      const msg =
-        err instanceof ZodError
-          ? err.issues.map((i) => i.message).join("\n")
-          : "Invalid input.";
-
-      return { ok: false, msg };
-    }
+    return createReleaseZ.parse(payload);
   }
 }

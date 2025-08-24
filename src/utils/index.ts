@@ -1,10 +1,8 @@
 import type { WAFTCommandInteraction } from "@waft/types";
-import type { seriesZ } from "@waft/validation";
-import {
-  ChannelType,
-  type ChatInputCommandInteraction,
-} from "discord.js";
-import type z from "zod";
+import { ChannelType, type ChatInputCommandInteraction } from "discord.js";
+
+export const pad = (str: string | number, len: number) =>
+  str.toString().padStart(len, "0");
 
 export function assertTextChannel(
   i: ChatInputCommandInteraction
@@ -14,15 +12,15 @@ export function assertTextChannel(
   }
 }
 
-// Derive series from catalog: "WAFT-001" -> null, "WAFT-FDL004" -> "FDL"
-export function inferSeries(catalog: string) {
-  const upper = catalog.toUpperCase();
-  const main = /^WAFT-\d{3}$/;
+// Derive series from catalog: "WAFT001" -> null, "WAFT-FDL004" -> "FDL"
+// export function inferSeries(catalog: string) {
+//   const upper = catalog.toUpperCase();
+//   const main = /^WAFT\d{3}$/;
 
-  if (main.test(upper)) {
-    return null;
-  }
-  const m = upper.match(/^WAFT-([A-Z]{2,6})\d{3}$/);
+//   if (main.test(upper)) {
+//     return null;
+//   }
+//   const m = upper.match(/^WAFT-([A-Z]{2,6})\d{3}$/);
 
-  return m ? (m[1] as z.infer<typeof seriesZ>) : null;
-}
+//   return m ? (m[1] as z.infer<typeof seriesZ>) : null;
+// }

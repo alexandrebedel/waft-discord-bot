@@ -1,8 +1,8 @@
 import { config } from "@waft/lib";
-import type { TextChannel } from "discord.js";
+import type { MessageCreateOptions, MessagePayload, TextChannel } from "discord.js";
 import { discordClient } from "../lib/discord";
 
-export async function sendMessageToReleaseChannel(content: string) {
+export async function sendMessageToReleaseChannel(content: string | MessagePayload | MessageCreateOptions) {
   const channel = await discordClient.channels.fetch(
     config.discordReleaseChannelId
   );

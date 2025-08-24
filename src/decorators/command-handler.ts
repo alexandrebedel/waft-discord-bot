@@ -1,24 +1,49 @@
-import type { WAFTCommandInteraction } from "@waft/types";
 import { assertTextChannel } from "@waft/utils";
 import { type Interaction, MessageFlags } from "discord.js";
 import signale from "signale";
+import { ZodError } from "zod";
 
 type CommandHandlerOptions = { skipTextChannelAssertion?: boolean };
-type TypedCommandHandler<TOpts extends CommandHandlerOptions> = (
-  interaction: TOpts["skipTextChannelAssertion"] extends true
-    ? Interaction
-    : WAFTCommandInteraction
-) => Promise<void>;
+// type TypedCommandHandler<TOpts extends CommandHandlerOptions> = (
+//   interaction: TOpts["skipTextChannelAssertion"] extends true
+//     ? Interaction
+//     : WAFTCommandInteraction
+// ) => Promise<void>;
 
-export function CommandHandler<TOpts extends CommandHandlerOptions>(
-  options?: TOpts
-) {
-  return <T extends TypedCommandHandler<TOpts>>(
-    target: T,
-    context: ClassMethodDecoratorContext
-  ) => {
-    const name = String(context.name);
-    const wrapped = async function (this: unknown, interaction: Interaction) {
+function extractErrorMsg(err: unknown) {
+  let msg = "❌ Something went wrong";
+
+  if (err instanceof ZodError) {
+    msg =
+      "❌ " +
+      err.issues
+        .map((i) => {
+          const path = i.path?.length ? `${i.path.join(".")}: ` : "";
+
+          return `${path}${i.message}`;
+        })
+        .join("\n");
+  } else if (err instanceof Error && err.message) {
+    msg = `❌ ${err.message}`;
+  }
+  return msg;
+}
+
+export function CommandHandler(options: CommandHandlerOptions = {}) {
+  return (
+    _target: unknown,
+    propertyKey: string | symbol,
+    descriptor: PropertyDescriptor
+  ): PropertyDescriptor => {
+    const original = descriptor.value;
+
+    if (typeof original !== "function") {
+      signale.warn(
+        `@CommandHandler: "${String(propertyKey)}" is not a function`
+      );
+      return descriptor;
+    }
+    descriptor.value = async function (interaction: Interaction) {
       try {
         if (!interaction.isChatInputCommand()) {
           return;
@@ -26,25 +51,27 @@ export function CommandHandler<TOpts extends CommandHandlerOptions>(
         if (!interaction.deferred && !interaction.replied) {
           await interaction.deferReply({ flags: MessageFlags.Ephemeral });
         }
-        if (!options?.skipTextChannelAssertion) {
+
+        if (!options.skipTextChannelAssertion) {
           assertTextChannel(interaction);
         }
-        await target.call(this, interaction as Parameters<T>[0]);
+        return await original.call(this, interaction);
       } catch (err) {
-        signale.error(`Error in ${name}`, err);
+        const msg = extractErrorMsg(err);
+
+        signale.error(`Error in ${String(propertyKey)}`, err);
         if (interaction.isRepliable()) {
           if (interaction.deferred || interaction.replied) {
-            await interaction.editReply("❌ Something went wrong");
+            await interaction.editReply(msg);
           } else {
             await interaction.reply({
-              content: "❌ Something went wrong",
+              content: msg,
               flags: MessageFlags.Ephemeral,
             });
           }
         }
       }
     };
-
-    return wrapped;
+    return descriptor;
   };
 }

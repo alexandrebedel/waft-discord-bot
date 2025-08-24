@@ -9,6 +9,8 @@
     "moduleDetection": "force",
     "jsx": "react-jsx",
     "allowJs": true,
+    // Needs to be disabled when https://github.com/oven-sh/bun/issues/4122 is done
+    "experimentalDecorators": true,
     // Bundler mode
     "moduleResolution": "bundler",
     "allowImportingTsExtensions": true,

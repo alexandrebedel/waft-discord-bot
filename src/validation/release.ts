@@ -1,3 +1,4 @@
+import { RELEASE_TYPES } from "@waft/constants";
 import { z } from "zod";
 
 export type CreateReleaseZod = z.infer<typeof createReleaseZ>;
@@ -21,7 +22,7 @@ export const releaseZ = z.object({
         "Invalid catalog. Use `WAFT-001` or `WAFT-AAA001` (e.g., `WAFT-FDL004`).",
     }),
   series: seriesZ, // null = mainline
-  type: z.enum(["COMP", "FDL", "EP", "ALBUM"]),
+  type: z.enum(RELEASE_TYPES.map((v) => v.value)),
   title: z.string().trim().optional(),
   releaseDate: z.coerce.date().optional(),
   channelId: z.string(),

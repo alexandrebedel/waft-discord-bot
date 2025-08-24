@@ -15,7 +15,7 @@ await dbConnect();
 
 // TODO: integrate middleware chain
 Bun.serve({
-  port: Number(process.env.PORT || 3000),
+  port: Number(Bun.env.PORT || 3000),
   async fetch(req) {
     const match = router.match(req);
 

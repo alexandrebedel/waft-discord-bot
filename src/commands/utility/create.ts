@@ -5,10 +5,11 @@ import {
   type SlashCommandOptionsOnlyBuilder,
 } from "discord.js";
 import { ZodError } from "zod";
-import { type CreateReleaseZod, createReleaseZ } from "../../lib/validation";
 import { Release } from "../../models/release";
 import type { IWAFTCommand } from "../../types/commands";
 import { assertTextChannel, inferSeries } from "../../utils";
+import { sendMessageToReleaseChannel } from "../../utils/discord";
+import { type CreateReleaseZod, createReleaseZ } from "../../validation";
 
 type ISetupCommand = IWAFTCommand<SlashCommandOptionsOnlyBuilder>;
 
@@ -56,6 +57,7 @@ export default class CreateCommand implements ISetupCommand {
         `✅ Planning set for **${name}** in <#${channel.id}>` +
         `\n💬 Thread: <#${1}>`,
     });
+    await sendMessageToReleaseChannel("Yoooo");
   }
 
   private async parseCommands(

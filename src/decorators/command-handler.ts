@@ -1,30 +1,37 @@
+import type { WAFTCommandInteraction } from "@waft/types";
+import { assertTextChannel } from "@waft/utils";
 import { type Interaction, MessageFlags } from "discord.js";
 import signale from "signale";
 
-export function CommandHandler() {
-  return (
-    _target: object,
-    propertyKey: string | symbol,
-    descriptor: TypedPropertyDescriptor<(i: Interaction) => Promise<void>>
+type CommandHandlerOptions = { skipTextChannelAssertion?: boolean };
+type TypedCommandHandler<TOpts extends CommandHandlerOptions> = (
+  interaction: TOpts["skipTextChannelAssertion"] extends true
+    ? Interaction
+    : WAFTCommandInteraction
+) => Promise<void>;
+
+export function CommandHandler<TOpts extends CommandHandlerOptions>(
+  options?: TOpts
+) {
+  return <T extends TypedCommandHandler<TOpts>>(
+    target: T,
+    context: ClassMethodDecoratorContext
   ) => {
-    const original = descriptor.value;
-
-    if (!original) {
-      signale.warn(
-        `@CommandHandler: missing handler for "${String(propertyKey)}"`
-      );
-      return descriptor;
-    }
-    descriptor.value = async function (interaction: Interaction) {
+    const name = String(context.name);
+    const wrapped = async function (this: unknown, interaction: Interaction) {
       try {
-        if (!interaction.isChatInputCommand()) return;
-
+        if (!interaction.isChatInputCommand()) {
+          return;
+        }
         if (!interaction.deferred && !interaction.replied) {
           await interaction.deferReply({ flags: MessageFlags.Ephemeral });
         }
-        await original.call(this, interaction);
+        if (!options?.skipTextChannelAssertion) {
+          assertTextChannel(interaction);
+        }
+        await target.call(this, interaction as Parameters<T>[0]);
       } catch (err) {
-        signale.error(`Error in ${String(propertyKey)}`, err);
+        signale.error(`Error in ${name}`, err);
         if (interaction.isRepliable()) {
           if (interaction.deferred || interaction.replied) {
             await interaction.editReply("❌ Something went wrong");
@@ -37,6 +44,7 @@ export function CommandHandler() {
         }
       }
     };
-    return descriptor;
+
+    return wrapped;
   };
 }

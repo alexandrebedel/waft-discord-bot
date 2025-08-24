@@ -1,11 +1,11 @@
+import { CommandHandler } from "@waft/decorators";
 import { Release } from "@waft/models";
-import type { IWAFTCommand } from "@waft/types";
-import { assertTextChannel, inferSeries } from "@waft/utils";
+import type { IWAFTCommand, WAFTCommandInteraction } from "@waft/types";
+import { inferSeries } from "@waft/utils";
 import { sendMessageToReleaseChannel } from "@waft/utils/discord";
 import { type CreateReleaseZod, createReleaseZ } from "@waft/validation";
 import {
   type Interaction,
-  MessageFlags,
   SlashCommandBuilder,
   type SlashCommandOptionsOnlyBuilder,
 } from "discord.js";
@@ -32,13 +32,8 @@ export default class CreateCommand implements ISetupCommand {
         .setRequired(true)
     );
 
-  public async handler(interaction: Interaction) {
-    if (!interaction.isChatInputCommand()) {
-      return;
-    }
-    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
-    assertTextChannel(interaction);
-
+  @CommandHandler()
+  public async handler(interaction: WAFTCommandInteraction) {
     const channel = interaction.channel;
     const name = interaction.options.getString("name", true).trim();
     const catalog = interaction.options.getString("catalog", true).trim();

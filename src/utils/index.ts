@@ -1,14 +1,14 @@
+import type { WAFTCommandInteraction } from "@waft/types";
 import type { seriesZ } from "@waft/validation";
 import {
   ChannelType,
   type ChatInputCommandInteraction,
-  type TextChannel,
 } from "discord.js";
 import type z from "zod";
 
 export function assertTextChannel(
   i: ChatInputCommandInteraction
-): asserts i is ChatInputCommandInteraction & { channel: TextChannel } {
+): asserts i is WAFTCommandInteraction {
   if (!i.channel || i.channel.type !== ChannelType.GuildText) {
     throw new Error("This command must be used in a text channel.");
   }

@@ -1,10 +1,10 @@
+import type { seriesZ } from "@waft/validation";
 import {
   ChannelType,
   type ChatInputCommandInteraction,
   type TextChannel,
 } from "discord.js";
 import type z from "zod";
-import type { seriesZ } from "../lib/validation";
 
 export function assertTextChannel(
   i: ChatInputCommandInteraction

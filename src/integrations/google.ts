@@ -1,18 +1,11 @@
 import fs from "node:fs";
 import { join } from "node:path";
 import { cwd } from "node:process";
+import { config } from "@waft/lib";
 import { google } from "googleapis";
 
-if (!Bun.env.GOOGLE_TRACKS_FOLDER || !Bun.env.GOOGLE_APPLICATION_CREDENTIALS) {
-  throw new Error(
-    "Missing env variables: GOOGLE_TRACKS_FOLDER, GOOGLE_APPLICATION_CREDENTIALS"
-  );
-}
-
-const tracksFolder = Bun.env.GOOGLE_TRACKS_FOLDER;
-
 const auth = new google.auth.GoogleAuth({
-  keyFile: join(cwd(), Bun.env.GOOGLE_APPLICATION_CREDENTIALS),
+  keyFile: join(cwd(), config.googleCredentials),
   scopes: ["https://www.googleapis.com/auth/drive"],
 });
 
@@ -20,7 +13,7 @@ const drive = google.drive({ version: "v3", auth });
 
 export async function listFiles() {
   const res = await drive.files.list({
-    q: `'${tracksFolder}' in parents`,
+    q: `'${config.googleTracksFolder}' in parents`,
     fields: "files(id, name, mimeType, createdTime, modifiedTime)",
   });
 

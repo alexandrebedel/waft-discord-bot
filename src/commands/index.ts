@@ -1,11 +1,12 @@
 import { join } from "node:path";
+import { config, discordClient, rest } from "@waft/lib";
+import type { IWAFTCommand } from "@waft/types";
 import {
   Collection,
   type RESTPostAPIChatInputApplicationCommandsJSONBody,
   Routes,
 } from "discord.js";
-import { CLIENT_ID, discordClient, GUILD_ID, rest } from "../lib/discord";
-import type { IWAFTCommand } from "../types/commands";
+import signale from "signale";
 
 const glob = new Bun.Glob("src/commands/utility/*.ts");
 const commands: RESTPostAPIChatInputApplicationCommandsJSONBody[] = [];
@@ -16,7 +17,7 @@ for await (const file of glob.scan(".")) {
   const module = await import(fullpath);
 
   if (!module.default) {
-    console.warn(`⚠️ Skipped ${file} no such default export`);
+    signale.warn(`Skipped ${file} no such default export`);
     continue;
   }
 
@@ -24,22 +25,29 @@ for await (const file of glob.scan(".")) {
   const command = instance.command;
 
   if (!command.name || typeof command.toJSON !== "function") {
-    console.warn(`⚠️ Skipped ${file} (no valid .command property)`);
+    signale.warn(`Skipped ${file} (no valid .command property)`);
     continue;
   }
   commands.push(command.toJSON());
   commandInstances.set(command.name, instance);
-  console.log(`✅ Loaded command: ${command.name}`);
 }
 
+signale.success(
+  `Loaded commands: ${commandInstances.map((v) => v.command.name).join(", ")}`
+);
+
 try {
-  console.log("🔄 Deploying commands...");
-  await rest.put(Routes.applicationGuildCommands(CLIENT_ID, GUILD_ID), {
-    body: commands,
-  });
-  console.log("🎉 OK — commands registered successfully");
+  signale.start("Deploying commands...");
+  await rest.put(
+    Routes.applicationGuildCommands(
+      config.discordClientId,
+      config.discordGuildId
+    ),
+    { body: commands }
+  );
+  signale.success("Commands registered successfully");
 } catch (err) {
-  console.error("❌ Failed to deploy commands", err);
+  signale.error("Failed to deploy commands", err);
   process.exit(1);
 }
 

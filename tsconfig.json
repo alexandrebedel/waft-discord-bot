@@ -21,13 +21,31 @@
     "noUncheckedIndexedAccess": true,
     "noImplicitOverride": true,
     // Some stricter flags (disabled by default)
-    "noUnusedLocals": false,
-    "noUnusedParameters": false,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
     "noPropertyAccessFromIndexSignature": false,
-    // "paths": {
-    //   "@waft/types": [
-    //     "/src/types/*"
-    //   ]
-    // }
+    "paths": {
+      "@waft/commands": ["./src/commands/index.ts"],
+      "@waft/commands/*": ["./src/commands/*"],
+      "@waft/decorators": ["./src/decorators/index.ts"],
+      "@waft/decorators/*": ["./src/decorators/*"],
+      "@waft/constants": ["./src/constants/index.ts"],
+      "@waft/utils": ["./src/utils/index.ts"],
+      "@waft/utils/*": ["./src/utils/*"],
+      "@waft/models": ["./src/models/index.ts"],
+      "@waft/models/*": ["./src/models/*"],
+      "@waft/validation": ["./src/validation/index.ts"],
+      "@waft/validation/*": ["./src/validation/*"],
+
+      "@waft/lib": ["./src/lib/index.ts"],
+      "@waft/lib/*": ["./src/lib/*"],
+      "@waft/integrations": ["./src/integrations/index.ts"],
+      "@waft/integrations/*": ["./src/integrations/*"],
+      "@waft/server": ["./src/server/index.ts"],
+      "@waft/server/*": ["./src/server/*"],
+
+      "@waft/types": ["./src/types/index.ts"],
+      "@waft/types/*": ["./src/types/*"]
+    }
   }
 }

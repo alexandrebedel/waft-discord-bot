@@ -1,13 +1,10 @@
 import { Client, GatewayIntentBits, REST } from "discord.js";
+import { config } from "./config";
 
 const client = new Client({
   intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages],
 });
 
-export const DISCORD_TOKEN = Bun.env.DISCORD_TOKEN!;
-export const CLIENT_ID = Bun.env.DISCORD_CLIENT_ID!;
-export const GUILD_ID = Bun.env.DISCORD_GUILD_ID!;
-
-const rest = new REST({ version: "10" }).setToken(DISCORD_TOKEN);
+const rest = new REST({ version: "10" }).setToken(config.discordToken);
 
 export { client as discordClient, rest };

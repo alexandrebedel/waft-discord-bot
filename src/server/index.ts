@@ -1,5 +1,6 @@
-import { FileSystemRouter, type RouterTypes } from "bun";
 import { join } from "node:path";
+import { FileSystemRouter, type RouterTypes } from "bun";
+import signale from "signale";
 import { HTTP_METHODS } from "../constants";
 
 type HandlerModule = RouterTypes.RouteHandlerObject<string>;
@@ -17,7 +18,6 @@ await Promise.all(
 
     for (const method of HTTP_METHODS) {
       const fn = module[method];
-
       if (typeof fn === "function") {
         entry[method] = fn;
       }
@@ -25,6 +25,12 @@ await Promise.all(
     handlerCache.set(filePath, entry);
     return routePath;
   })
-).then((v) => console.log(`Preloaded routes: ${v.join(", ")}`));
+).then((paths) => {
+  if (paths.length > 0) {
+    signale.success(`Preloaded routes: ${paths.join(", ")}`);
+    return;
+  }
+  signale.warn("No routes found to preload");
+});
 
 export { handlerCache };

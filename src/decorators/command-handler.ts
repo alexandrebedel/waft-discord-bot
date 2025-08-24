@@ -1,4 +1,5 @@
 import { type Interaction, MessageFlags } from "discord.js";
+import signale from "signale";
 
 export function CommandHandler() {
   return (
@@ -9,22 +10,21 @@ export function CommandHandler() {
     const original = descriptor.value;
 
     if (!original) {
-      console.log("⚠️ please write a message");
-      return;
+      signale.warn(
+        `@CommandHandler: missing handler for "${String(propertyKey)}"`
+      );
+      return descriptor;
     }
-    descriptor.value = async function (
-      interaction: Interaction
-    ): Promise<void> {
+    descriptor.value = async function (interaction: Interaction) {
       try {
-        if (!interaction.isChatInputCommand()) {
-          return;
-        }
+        if (!interaction.isChatInputCommand()) return;
+
         if (!interaction.deferred && !interaction.replied) {
           await interaction.deferReply({ flags: MessageFlags.Ephemeral });
         }
         await original.call(this, interaction);
       } catch (err) {
-        console.error(`❌ Error in ${String(propertyKey)}:`, err);
+        signale.error(`Error in ${String(propertyKey)}`, err);
         if (interaction.isRepliable()) {
           if (interaction.deferred || interaction.replied) {
             await interaction.editReply("❌ Something went wrong");

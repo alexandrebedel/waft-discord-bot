@@ -1,14 +1,15 @@
-import { DISCORD_TOKEN, discordClient } from "./lib/discord";
 import "./commands";
 import type { RouterTypes } from "bun";
+import signale from "signale";
+import { config, discordClient } from "./lib";
 import { dbCleanup, dbConnect } from "./lib/db";
 import { handlerCache, router } from "./server";
 
 discordClient.once("clientReady", (client) => {
-  console.log(`✅ Bot connecté en tant que ${client.user?.tag}`);
+  signale.success(`Successfully connected as ${client.user?.tag}`);
 });
 
-discordClient.login(DISCORD_TOKEN);
+discordClient.login(config.discordToken);
 
 // TODO: some kind of bot disable when the db is not connected
 await dbConnect();
@@ -37,7 +38,7 @@ Bun.serve({
         params: match.params as Record<string, string>,
       });
     } catch (e) {
-      console.error(e);
+      signale.error(e);
       return new Response("Internal Server Error", { status: 500 });
     }
   },

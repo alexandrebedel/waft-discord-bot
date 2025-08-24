@@ -1,3 +1,8 @@
+import { Release } from "@waft/models";
+import type { IWAFTCommand } from "@waft/types";
+import { assertTextChannel, inferSeries } from "@waft/utils";
+import { sendMessageToReleaseChannel } from "@waft/utils/discord";
+import { type CreateReleaseZod, createReleaseZ } from "@waft/validation";
 import {
   type Interaction,
   MessageFlags,
@@ -5,11 +10,6 @@ import {
   type SlashCommandOptionsOnlyBuilder,
 } from "discord.js";
 import { ZodError } from "zod";
-import { Release } from "../../models/release";
-import type { IWAFTCommand } from "../../types/commands";
-import { assertTextChannel, inferSeries } from "../../utils";
-import { sendMessageToReleaseChannel } from "../../utils/discord";
-import { type CreateReleaseZod, createReleaseZ } from "../../validation";
 
 type ISetupCommand = IWAFTCommand<SlashCommandOptionsOnlyBuilder>;
 

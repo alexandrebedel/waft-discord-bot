@@ -8,7 +8,7 @@ import {
 } from "discord.js";
 import signale from "signale";
 
-const glob = new Bun.Glob("src/commands/utility/*.ts");
+const glob = new Bun.Glob("src/commands/utility/**/*.ts");
 const commands: RESTPostAPIChatInputApplicationCommandsJSONBody[] = [];
 const commandInstances = new Collection<string, IWAFTCommand>();
 

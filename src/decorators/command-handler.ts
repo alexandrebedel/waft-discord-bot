@@ -1,14 +1,12 @@
 import { assertTextChannel } from "@waft/utils";
-import { type Interaction, MessageFlags } from "discord.js";
+import { type ChatInputCommandInteraction, MessageFlags } from "discord.js";
 import signale from "signale";
 import { ZodError } from "zod";
 
-type CommandHandlerOptions = { skipTextChannelAssertion?: boolean };
-// type TypedCommandHandler<TOpts extends CommandHandlerOptions> = (
-//   interaction: TOpts["skipTextChannelAssertion"] extends true
-//     ? Interaction
-//     : WAFTCommandInteraction
-// ) => Promise<void>;
+type CommandHandlerOptions = {
+  skipTextChannelAssertion?: boolean;
+  autoDefer?: boolean;
+};
 
 function extractErrorMsg(err: unknown) {
   let msg = "❌ Something went wrong";
@@ -30,6 +28,8 @@ function extractErrorMsg(err: unknown) {
 }
 
 export function CommandHandler(options: CommandHandlerOptions = {}) {
+  const shouldAutoDefer = options.autoDefer ?? true;
+
   return (
     _target: unknown,
     propertyKey: string | symbol,
@@ -43,15 +43,13 @@ export function CommandHandler(options: CommandHandlerOptions = {}) {
       );
       return descriptor;
     }
-    descriptor.value = async function (interaction: Interaction) {
+    descriptor.value = async function (
+      interaction: ChatInputCommandInteraction
+    ) {
       try {
-        if (!interaction.isChatInputCommand()) {
-          return;
-        }
-        if (!interaction.deferred && !interaction.replied) {
+        if (shouldAutoDefer && !interaction.deferred && !interaction.replied) {
           await interaction.deferReply({ flags: MessageFlags.Ephemeral });
         }
-
         if (!options.skipTextChannelAssertion) {
           assertTextChannel(interaction);
         }
@@ -60,16 +58,17 @@ export function CommandHandler(options: CommandHandlerOptions = {}) {
         const msg = extractErrorMsg(err);
 
         signale.error(`Error in ${String(propertyKey)}`, err);
-        if (interaction.isRepliable()) {
-          if (interaction.deferred || interaction.replied) {
-            await interaction.editReply(msg);
-          } else {
-            await interaction.reply({
-              content: msg,
-              flags: MessageFlags.Ephemeral,
-            });
-          }
+        if (!interaction.isRepliable()) {
+          return;
         }
+        if (interaction.deferred || interaction.replied) {
+          await interaction.editReply(msg);
+          return;
+        }
+        await interaction.reply({
+          content: msg,
+          flags: MessageFlags.Ephemeral,
+        });
       }
     };
     return descriptor;

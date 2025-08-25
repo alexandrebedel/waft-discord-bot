@@ -13,6 +13,9 @@ const envSchema = z
     DISCORD_RELEASE_CHANNEL_ID: z
       .string()
       .min(1, "DISCORD_RELEASE_CHANNEL_ID is required"),
+    SC_CLIENT_ID: z.string().min(1, "SC_CLIENT_ID is required"),
+    SC_CLIENT_SECRET: z.string().min(1, "SC_CLIENT_SECRET is required"),
+    SC_REDIRECT_URI: z.string().min(1, "SC_REDIRECT_URI is required"),
   })
   .transform((env) => ({
     mongoUri: env.MONGO_URI,
@@ -22,6 +25,9 @@ const envSchema = z
     discordGuildId: env.DISCORD_GUILD_ID,
     discordToken: env.DISCORD_TOKEN,
     discordReleaseChannelId: env.DISCORD_RELEASE_CHANNEL_ID,
+    scClientId: env.SC_CLIENT_ID,
+    scClientSecret: env.SC_CLIENT_SECRET,
+    scRedirectUri: env.SC_REDIRECT_URI,
   }));
 
 export const config = envSchema.parse(Bun.env);

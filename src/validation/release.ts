@@ -5,7 +5,7 @@ export type CreateReleaseZod = z.infer<typeof createReleaseZ>;
 export type ReleaseInput = z.infer<typeof releaseZ>;
 
 /** Accepted catalog formats :
- *  - Mainline : WAFT-001
+ *  - Mainline : WAFT001
  *  - Series   : WAFT-FDL004, WAFT-COMP001, ...
  */
 const RE_MAIN = /^WAFT\d{3}$/;

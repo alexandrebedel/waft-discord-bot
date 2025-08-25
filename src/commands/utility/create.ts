@@ -1,13 +1,17 @@
 import { RELEASE_TYPES, type ReleaseType } from "@waft/constants";
 import { CommandHandler } from "@waft/decorators";
+import { createReleaseFolder } from "@waft/integrations/google";
 import { config } from "@waft/lib";
 import { Release } from "@waft/models";
 import type { IWAFTCommand, WAFTCommandInteraction } from "@waft/types";
-import { pad } from "@waft/utils";
-import { sendMessageToReleaseChannel } from "@waft/utils/discord";
+import { getCatalog } from "@waft/utils";
+import {
+  sendMessageToReleaseChannel,
+  startReleaseThread,
+} from "@waft/utils/discord";
 import { type CreateReleaseZod, createReleaseZ } from "@waft/validation";
 import {
-  type Interaction,
+  MessageFlags,
   SlashCommandBuilder,
   type SlashCommandOptionsOnlyBuilder,
 } from "discord.js";
@@ -48,47 +52,37 @@ export default class CreateCommand implements ISetupCommand {
       .trim() as ReleaseType;
     const name = interaction.options.getString("name", true).trim();
     const catNumber = interaction.options.getInteger("catalog", true);
-
-    const catalog =
-      type === "FDL" || type === "COMP"
-        ? `WAFT-${type}${pad(catNumber, 3)}`
-        : `WAFT${pad(catNumber, 3)}`;
+    const catalog = getCatalog(catNumber, type);
 
     const result = await this.parseCommands(type, name, catalog);
     const document = await Release.create(result);
+    const folder = await createReleaseFolder(name);
     const message = await sendMessageToReleaseChannel({
       content: [
         `✨ **${catalog} — ${name} — Planning** ✨`,
         "",
         "Calendrier des sorties",
         "Merci d'updater l'état de vos tracks (fichier master, pochette, etc.) pour que tout roule 👌",
+        "",
+        "📂 Dossier Google Drive :",
+        folder.webViewLink,
       ].join("\n"),
+      flags: MessageFlags.SuppressEmbeds,
     });
 
-    // TODO: clean this part
     try {
       await message.pin();
     } catch {}
 
-    let threadId: string | undefined;
-    try {
-      const thread = await message.startThread({
-        name: `${catalog} — discussion`.slice(0, 100),
-        autoArchiveDuration: 10080, // 7 jours
-      });
-      threadId = thread.id;
-    } catch {}
-
     document.planningMessageId = message.id;
-    if (threadId) {
-      document.threadId = threadId;
-    }
+    document.threadId = await startReleaseThread(message, catalog);
+    document.driveFolderId = folder.id;
     await document.save();
     await interaction.editReply({
       content:
         `✅ Planning créé pour **${name}** \`(${catalog})\` dans <#${message.channelId}>` +
         `\n📝 [Voir le message](${message.url})` +
-        (threadId ? `\n💬 Thread: <#${threadId}>` : ""),
+        (document.threadId ? `\n💬 Thread: <#${document.threadId}>` : ""),
     });
   }
 

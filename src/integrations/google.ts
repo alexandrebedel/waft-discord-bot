@@ -1,7 +1,7 @@
-import fs from "node:fs";
 import { join } from "node:path";
 import { cwd } from "node:process";
 import { config } from "@waft/lib";
+import { randomUUIDv7 } from "bun";
 import { google } from "googleapis";
 
 const auth = new google.auth.GoogleAuth({
@@ -10,6 +10,15 @@ const auth = new google.auth.GoogleAuth({
 });
 
 const drive = google.drive({ version: "v3", auth });
+
+export async function getStartPageToken() {
+  const { data } = await drive.changes.getStartPageToken({});
+
+  if (!data.startPageToken) {
+    throw new Error("No startPageToken returned from Google Drive API");
+  }
+  return data.startPageToken;
+}
 
 export async function listFiles() {
   const res = await drive.files.list({
@@ -20,28 +29,29 @@ export async function listFiles() {
   return res.data.files;
 }
 
-export async function createFolder(name: string) {
+export async function createReleaseFolder(name: string) {
   const res = await drive.files.create({
     requestBody: {
       name,
       mimeType: "application/vnd.google-apps.folder",
+      parents: [config.googleTracksFolder],
     },
-    fields: "id, name",
+    fields: "id, name, webViewLink",
   });
-  console.log("Folder created:", res.data);
+
+  return res.data;
 }
 
-export async function uploadFile(folderId: string) {
-  const res = await drive.files.create({
+export async function watchDrive() {
+  const res = await drive.changes.watch({
+    pageToken: await getStartPageToken(),
     requestBody: {
-      name: "track01.wav",
-      parents: [folderId],
+      id: randomUUIDv7(),
+      type: "web_hook",
+      address: "https://ton-domaine.com/google/changes",
     },
-    media: {
-      mimeType: "audio/wav",
-      body: fs.createReadStream("./track01.wav"),
-    },
-    fields: "id, name",
   });
-  console.log("File uploaded:", res.data);
+
+  console.log("📡 Watch registered:", res.data);
+  return res.data;
 }

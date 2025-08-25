@@ -1,8 +1,15 @@
 import { config } from "@waft/lib";
-import type { MessageCreateOptions, MessagePayload, TextChannel } from "discord.js";
+import type {
+  Message,
+  MessageCreateOptions,
+  MessagePayload,
+  TextChannel,
+} from "discord.js";
 import { discordClient } from "../lib/discord";
 
-export async function sendMessageToReleaseChannel(content: string | MessagePayload | MessageCreateOptions) {
+export async function sendMessageToReleaseChannel(
+  content: string | MessagePayload | MessageCreateOptions
+) {
   const channel = await discordClient.channels.fetch(
     config.discordReleaseChannelId
   );
@@ -11,4 +18,17 @@ export async function sendMessageToReleaseChannel(content: string | MessagePaylo
     throw new Error("❌ Channel not found or is not text-based");
   }
   return await (channel as TextChannel).send(content);
+}
+
+export async function startReleaseThread(message: Message, catalog: string) {
+  try {
+    const thread = await message.startThread({
+      name: `${catalog} — discussion`.slice(0, 100),
+      autoArchiveDuration: 10080, // 7 days
+    });
+
+    return thread.id;
+  } catch {
+    return null;
+  }
 }

@@ -17,7 +17,7 @@ const ReleaseSchema = new Schema(
     channelId: { type: String, required: true },
     planningMessageId: { type: String },
     threadId: { type: String },
-
+    driveFolderId: { type: String },
     // tracks: { type: [], default: [] },
   },
   { timestamps: true }

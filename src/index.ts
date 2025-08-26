@@ -1,6 +1,7 @@
 import "./commands";
 import type { RouterTypes } from "bun";
 import signale from "signale";
+import { initWatch, startWatch, stopWatch } from "./integrations/google";
 import { config, discordClient } from "./lib";
 import { dbCleanup, dbConnect } from "./lib/db";
 import { handlerCache, router } from "./server";
@@ -13,6 +14,8 @@ discordClient.login(config.discordToken);
 
 // TODO: some kind of bot disable when the db is not connected
 await dbConnect();
+await initWatch();
+await startWatch(`https://56d847b3ddf7.ngrok-free.app/google/changes`);
 
 // TODO: integrate middleware chain
 Bun.serve({
@@ -44,4 +47,12 @@ Bun.serve({
   },
 });
 
+process.on("SIGINT", async () => {
+  await stopWatch();
+  process.exit(0);
+});
+process.on("SIGTERM", async () => {
+  await stopWatch();
+  process.exit(0);
+});
 process.on("exit", () => dbCleanup());

@@ -1,72 +1,123 @@
 import { config } from "@waft/lib";
-import { SoundcloudAuth } from "@waft/models";
+import signale from "signale";
 
 const AUTH_BASE = "https://soundcloud.com/connect";
 const TOKEN_URL = "https://api.soundcloud.com/oauth2/token";
-// const API_BASE = "https://api.soundcloud.com";
+const API_BASE = "https://api.soundcloud.com";
 
-export function buildAuthUrl(state = "sc-oauth") {
-  const u = new URL(AUTH_BASE);
+type TokenState = {
+  accessToken: string | null;
+  refreshToken: string | null;
+  tokenType: "OAuth" | string; // SC uses "OAuth"
+};
 
-  u.searchParams.set("client_id", config.scClientId);
-  u.searchParams.set("redirect_uri", config.scRedirectUri);
-  u.searchParams.set("response_type", "code");
-  u.searchParams.set("state", state);
-  return u.toString();
+const state: TokenState = {
+  accessToken: null,
+  refreshToken: null,
+  tokenType: "OAuth",
+};
+
+// --- getters/setters (useful for persistence) ---
+export function getTokens() {
+  return { ...state };
+}
+export function setTokens(
+  access: string,
+  refresh?: string | null,
+  tokenType = "OAuth"
+) {
+  state.accessToken = access;
+  state.refreshToken = refresh ?? state.refreshToken;
+  state.tokenType = tokenType;
+}
+export function isConnected() {
+  return !!state.accessToken;
 }
 
-export async function tokenRequest(params: Record<string, string>) {
-  const body = new URLSearchParams(params);
+// --- oauth helpers ---
+export function buildAuthUrl(stateParam?: string) {
+  const url = new URL(AUTH_BASE);
+  url.searchParams.set("client_id", config.scClientId);
+  url.searchParams.set("response_type", "code");
+  url.searchParams.set("redirect_uri", config.scRedirectUri);
+  // Optional: url.searchParams.set("scope", "non-expiring");
+  if (stateParam) url.searchParams.set("state", stateParam);
+  signale.log(url.toString());
+  return url.toString();
+}
+
+export async function exchangeCode(code: string) {
+  const body = new URLSearchParams();
+  body.set("client_id", config.scClientId);
+  body.set("client_secret", config.scClientSecret);
+  body.set("redirect_uri", config.scRedirectUri);
+  body.set("grant_type", "authorization_code");
+  body.set("code", code);
+
   const res = await fetch(TOKEN_URL, {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body,
   });
+  if (!res.ok)
+    throw new Error(
+      `Token exchange failed (${res.status}): ${await res.text()}`
+    );
 
-  if (!res.ok) {
-    throw new Error(`SC token request failed: ${res.status}`);
-  }
-  return res.json() as Promise<{
+  const json = (await res.json()) as {
     access_token: string;
     refresh_token?: string;
-    expires_in: number;
-    scope?: string;
     token_type?: string;
-  }>;
+    expires_in?: number;
+    scope?: string;
+  };
+
+  setTokens(
+    json.access_token,
+    json.refresh_token ?? null,
+    json.token_type ?? "OAuth"
+  );
+  return json;
 }
 
-// export async function exchangeCodeForToken(code: string) {
-//   return tokenRequest({
-//     client_id: config.scClientId,
-//     client_secret: config.scClientSecret,
-//     redirect_uri: config.scRedirectUri,
-//     grant_type: "authorization_code",
-//     code,
-//   });
-// }
+export async function refreshAccessToken() {
+  if (!state.refreshToken) throw new Error("No refresh token available");
 
-// export async function refreshAccessToken(refreshToken: string) {
-//   return tokenRequest({
-//     client_id: config.scClientId,
-//     client_secret: config.scClientSecret,
-//     grant_type: "refresh_token",
-//     refresh_token: refreshToken,
-//   });
-// }
+  const body = new URLSearchParams();
+  body.set("client_id", config.scClientId);
+  body.set("client_secret", config.scClientSecret);
+  body.set("grant_type", "refresh_token");
+  body.set("refresh_token", state.refreshToken);
 
-// export async function ensureAccessToken(): Promise<string> {
-//   const doc = await SoundcloudAuth.findOne({ _singleton: "soundcloud" });
-//   if (!doc) throw new Error("SoundCloud is not connected.");
+  const res = await fetch(TOKEN_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body,
+  });
+  if (!res.ok)
+    throw new Error(`Refresh failed: ${res.status} ${res.statusText}`);
 
-//   // refresh 60s before expiry
-//   if (doc.expiresAt.getTime() - Date.now() < 60_000) {
-//     const r = await refreshAccessToken(doc.refreshToken);
-//     doc.accessToken = r.access_token;
-//     if (r.refresh_token) doc.refreshToken = r.refresh_token;
-//     doc.tokenType = r.token_type ?? "Bearer";
-//     doc.expiresAt = new Date(Date.now() + r.expires_in * 1000);
-//     if (r.scope) doc.scope = r.scope;
-//     await doc.save();
-//   }
-//   return `${doc.tokenType} ${doc.accessToken}`;
-// }
+  const json = (await res.json()) as {
+    access_token: string;
+    refresh_token?: string;
+    token_type?: string;
+  };
+
+  setTokens(
+    json.access_token,
+    json.refresh_token ?? state.refreshToken,
+    json.token_type ?? state.tokenType
+  );
+  return json;
+}
+
+export async function getMe() {
+  if (!state.accessToken)
+    throw new Error("Not authenticated. Use /sc connect first.");
+  const res = await fetch(`${API_BASE}/me`, {
+    headers: { Authorization: `${state.tokenType} ${state.accessToken}` },
+  });
+  if (!res.ok)
+    throw new Error(`SoundCloud /me failed: ${res.status} ${res.statusText}`);
+  return res.json();
+}

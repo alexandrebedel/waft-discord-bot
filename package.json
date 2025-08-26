@@ -9,6 +9,7 @@
   "devDependencies": {
     "@biomejs/biome": "^2.2.0",
     "@types/bun": "latest",
+    "@types/form-data": "^2.5.2",
     "@types/signale": "^1.4.7"
   },
   "peerDependencies": {
@@ -16,6 +17,7 @@
   },
   "dependencies": {
     "discord.js": "^14.22.0",
+    "form-data": "^4.0.4",
     "googleapis": "^156.0.0",
     "mongoose": "^8.17.2",
     "signale": "^1.4.0",

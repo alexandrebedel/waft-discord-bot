@@ -1,11 +1,12 @@
 import { CommandHandler } from "@waft/decorators";
-import { buildAuthUrl, getMe } from "@waft/integrations/soundcloud";
+import { soundcloud } from "@waft/integrations";
 import type { IWAFTCommand, WAFTCommandInteraction } from "@waft/types";
 import {
   SlashCommandBuilder,
   type SlashCommandSubcommandsOnlyBuilder,
 } from "discord.js";
 import signale from "signale";
+import { SoundCloudError, SoundCloudErrorType } from "../../errors";
 
 type ISoundcloudCommand = IWAFTCommand<SlashCommandSubcommandsOnlyBuilder>;
 
@@ -25,25 +26,38 @@ export default class SoundCloudCommand implements ISoundcloudCommand {
     const sub = interaction.options.getSubcommand(true);
 
     if (sub === "connect") {
-      const url = buildAuthUrl();
+      const url = soundcloud.buildAuthUrl();
       await interaction.editReply(`🔗 Connect SoundCloud:\n<${url}>`);
       return;
     }
     if (sub === "me") {
       try {
-        const me = await getMe();
+        const me = await soundcloud.getMe();
+        signale.log(me);
         await interaction.editReply(
-            // @ts-expect-error
           `👤 Connected as **${me.username}** (id: ${me.id})`
         );
         return;
       } catch (err) {
         signale.error(err);
-        // const msg = true
-        //   ? `❌ ${err?.message ?? "Failed to fetch /me"}`
-        //   : "❌ Not connected. Use `/sc connect` first.";
+        if (err instanceof SoundCloudError) {
+          if (err.is(SoundCloudErrorType.NotConnected)) {
+            await interaction.editReply(
+              `❌ ${err.message}\n🔗 Run \`/sc connect\` to link SoundCloud.`
+            );
+            return;
+          }
+          if (err.is(SoundCloudErrorType.AuthExpired)) {
+            await interaction.editReply(
+              `⚠️ ${err.message}\n🔗 Please reconnect via \`/sc connect\`.`
+            );
+            return;
+          }
+        }
 
-        interaction.editReply("test");
+        const msg = err instanceof Error ? err.message : "Unexpected error";
+
+        await interaction.editReply(`❌ ${msg}`);
         return;
       }
     }

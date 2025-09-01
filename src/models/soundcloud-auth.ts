@@ -1,4 +1,21 @@
-import { model, Schema } from "mongoose";
+import {
+  type HydratedDocument,
+  type InferSchemaType,
+  type Model,
+  model,
+  Schema,
+} from "mongoose";
+
+export type SoundCloudAccount = Partial<{
+  id: number;
+  username: string;
+  permalink: string;
+  avatar_url: string;
+}>;
+
+export type SoundCloudAuth = InferSchemaType<typeof SoundCloudAuthSchema>;
+export type SoundCloudAuthDocument = HydratedDocument<SoundCloudAuth>;
+export interface SoundCloudAuthModel extends Model<SoundCloudAuth> {}
 
 const SoundCloudAuthSchema = new Schema(
   {
@@ -18,4 +35,7 @@ const SoundCloudAuthSchema = new Schema(
   { timestamps: true, _id: false }
 );
 
-export const SoundCloudAuth = model("SoundCloudAuth", SoundCloudAuthSchema);
+export const SoundCloudAuth = model<SoundCloudAuth, SoundCloudAuthModel>(
+  "SoundCloudAuth",
+  SoundCloudAuthSchema
+);

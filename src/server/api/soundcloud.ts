@@ -1,4 +1,4 @@
-import { exchangeCode } from "@waft/integrations/soundcloud";
+import { soundcloud } from "@waft/integrations";
 import { config } from "@waft/lib";
 import signale from "signale";
 
@@ -16,11 +16,12 @@ export async function GET(req: Request) {
     return new Response("Missing code parameter", { status: 400 });
   }
   try {
-    const res = await exchangeCode(code);
+    const res = await soundcloud.exchangeCode(code);
 
     signale.success("[SoundCloud] tokens exchanged", res);
     return Response.redirect(DISCORD_REDIRECT, 302);
   } catch (e) {
+    signale.error(e);
     // @ts-expect-error
     return new Response(`Token exchange failed: ${e?.message ?? e}`, {
       status: 500,

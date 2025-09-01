@@ -1,123 +1,218 @@
 import { config } from "@waft/lib";
+import { SoundCloudAuth } from "@waft/models";
 import signale from "signale";
+import { SoundCloudError, SoundCloudErrorType } from "../errors";
 
-const AUTH_BASE = "https://soundcloud.com/connect";
+const AUTH_BASE = "https://secure.soundcloud.com/authorize";
 const TOKEN_URL = "https://api.soundcloud.com/oauth2/token";
 const API_BASE = "https://api.soundcloud.com";
 
 type TokenState = {
   accessToken: string | null;
   refreshToken: string | null;
-  tokenType: "OAuth" | string; // SC uses "OAuth"
+  tokenType: string;
+  expiresAt: Date | null;
 };
 
-const state: TokenState = {
-  accessToken: null,
-  refreshToken: null,
-  tokenType: "OAuth",
-};
-
-// --- getters/setters (useful for persistence) ---
-export function getTokens() {
-  return { ...state };
-}
-export function setTokens(
-  access: string,
-  refresh?: string | null,
-  tokenType = "OAuth"
-) {
-  state.accessToken = access;
-  state.refreshToken = refresh ?? state.refreshToken;
-  state.tokenType = tokenType;
-}
-export function isConnected() {
-  return !!state.accessToken;
-}
-
-export function buildAuthUrl(stateParam?: string) {
-  const url = new URL(AUTH_BASE);
-
-  url.searchParams.set("client_id", config.scClientId);
-  url.searchParams.set("response_type", "code");
-  url.searchParams.set("redirect_uri", config.scRedirectUri);
-  // Optional: url.searchParams.set("scope", "non-expiring");
-  if (stateParam) url.searchParams.set("state", stateParam);
-  signale.log(url.toString());
-  return url.toString();
-}
-
-export async function exchangeCode(code: string) {
-  const body = new URLSearchParams();
-  body.set("client_id", config.scClientId);
-  body.set("client_secret", config.scClientSecret);
-  body.set("redirect_uri", config.scRedirectUri);
-  body.set("grant_type", "authorization_code");
-  body.set("code", code);
-
-  const res = await fetch(TOKEN_URL, {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body,
-  });
-  if (!res.ok)
-    throw new Error(
-      `Token exchange failed (${res.status}): ${await res.text()}`
-    );
-
-  const json = (await res.json()) as {
-    access_token: string;
-    refresh_token?: string;
-    token_type?: string;
-    expires_in?: number;
-    scope?: string;
+class SoundCloudClient {
+  private readonly clientId = config.scClientId;
+  private readonly clientSecret = config.scClientSecret;
+  private readonly redirectUri = config.scRedirectUri;
+  private state: TokenState = {
+    accessToken: null,
+    refreshToken: null,
+    tokenType: "OAuth",
+    expiresAt: null,
   };
 
-  setTokens(
-    json.access_token,
-    json.refresh_token ?? null,
-    json.token_type ?? "OAuth"
-  );
-  return json;
+  async hydrate() {
+    const doc = await SoundCloudAuth.findById("soundcloud").lean();
+
+    if (!doc) {
+      return false;
+    }
+    this.state.accessToken = doc.accessToken ?? null;
+    this.state.refreshToken = doc.refreshToken ?? null;
+    this.state.tokenType = doc.tokenType ?? "OAuth";
+    this.state.expiresAt = doc.expiresAt ?? null;
+    return true;
+  }
+
+  buildAuthUrl(stateParam?: string) {
+    const url = new URL(AUTH_BASE);
+
+    url.searchParams.set("client_id", this.clientId);
+    url.searchParams.set("response_type", "code");
+    url.searchParams.set("redirect_uri", this.redirectUri);
+    if (stateParam) {
+      url.searchParams.set("state", stateParam);
+    }
+    return url.toString();
+  }
+
+  async exchangeCode(code: string) {
+    const body = new URLSearchParams();
+
+    body.set("client_id", this.clientId);
+    body.set("client_secret", this.clientSecret);
+    body.set("redirect_uri", this.redirectUri);
+    body.set("grant_type", "authorization_code");
+    body.set("code", code);
+
+    const res = await fetch(TOKEN_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body,
+    });
+    if (!res.ok)
+      throw new Error(
+        `Token exchange failed (${res.status}): ${await res.text()}`
+      );
+
+    const json = (await res.json()) as {
+      access_token: string;
+      refresh_token?: string;
+      token_type?: string;
+      expires_in?: number;
+      scope?: string;
+    };
+
+    signale.log({ json });
+
+    let me: any = null;
+    try {
+      const r = await fetch(`${API_BASE}/me`, {
+        headers: {
+          Authorization: `${json.token_type ?? "OAuth"} ${json.access_token}`,
+        },
+      });
+      if (r.ok) me = await r.json();
+    } catch {}
+
+    await this.saveTokens({
+      accessToken: json.access_token,
+      refreshToken: json.refresh_token ?? null,
+      tokenType: json.token_type ?? "OAuth",
+      scope: json.scope ?? null,
+      expiresInSec: json.expires_in ?? null,
+      accountSnapshot: me
+        ? {
+            id: me.id,
+            username: me.username,
+            permalink: me.permalink_url ?? me.permalink,
+            avatar_url: me.avatar_url,
+          }
+        : undefined,
+    });
+
+    await this.hydrate();
+    return json;
+  }
+
+  private async refreshAccessToken() {
+    if (!this.state.refreshToken) {
+      throw new Error("No refresh token available");
+    }
+
+    const body = new URLSearchParams();
+
+    body.set("client_id", this.clientId);
+    body.set("client_secret", this.clientSecret);
+    body.set("grant_type", "refresh_token");
+    body.set("refresh_token", this.state.refreshToken);
+
+    const res = await fetch(TOKEN_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body,
+    });
+
+    if (!res.ok) {
+      throw new Error(`Refresh failed: ${res.status} ${res.statusText}`);
+    }
+
+    const json = (await res.json()) as {
+      access_token: string;
+      refresh_token?: string;
+      token_type?: string;
+      expires_in?: number;
+    };
+
+    await this.saveTokens({
+      accessToken: json.access_token,
+      refreshToken: json.refresh_token ?? this.state.refreshToken,
+      tokenType: json.token_type ?? this.state.tokenType,
+      expiresInSec: json.expires_in ?? null,
+    });
+    await this.hydrate();
+  }
+
+  private async authedFetch(path: string, init?: RequestInit) {
+    if (!this.state.accessToken) {
+      throw new SoundCloudError(
+        "Not authenticated. Use /sc connect first.",
+        SoundCloudErrorType.NotConnected
+      );
+    }
+
+    const doFetch = () =>
+      fetch(`${API_BASE}${path}`, {
+        ...init,
+        headers: {
+          ...(init?.headers || {}),
+          Authorization: `${this.state.tokenType} ${this.state.accessToken}`,
+        },
+      });
+
+    let res = await doFetch();
+
+    if (res.status === 401 || res.status === 403) {
+      if (this.state.refreshToken) {
+        signale.log("found refresh so we refresh");
+        await this.refreshAccessToken().catch(() => {});
+        res = await doFetch();
+      }
+    }
+    if (!res.ok) {
+      const msg = await res.text();
+
+      if (res.status === 401 || res.status === 403) {
+        throw new SoundCloudError(
+          "SoundCloud auth expired or revoked. Run `/sc connect` again.",
+          SoundCloudErrorType.NotConnected
+        );
+      }
+      throw new SoundCloudError(`SoundCloud API error ${res.status}: ${msg}`);
+    }
+    return res;
+  }
+
+  async getMe() {
+    const res = await this.authedFetch("/me");
+    return res.json() as any;
+  }
+
+  async saveTokens(params: any) {
+    const expiresAt = params.expiresInSec
+      ? new Date(Date.now() + params.expiresInSec * 1000)
+      : null;
+    const doc = await SoundCloudAuth.findByIdAndUpdate(
+      "soundcloud",
+      {
+        $set: {
+          accessToken: params.accessToken,
+          refreshToken: params.refreshToken ?? null,
+          tokenType: params.tokenType ?? "OAuth",
+          scope: params.scope ?? null,
+          expiresAt,
+          account: params.accountSnapshot ?? {},
+        },
+      },
+      { upsert: true, new: true }
+    ).lean();
+
+    return doc;
+  }
 }
 
-export async function refreshAccessToken() {
-  if (!state.refreshToken) throw new Error("No refresh token available");
-
-  const body = new URLSearchParams();
-  body.set("client_id", config.scClientId);
-  body.set("client_secret", config.scClientSecret);
-  body.set("grant_type", "refresh_token");
-  body.set("refresh_token", state.refreshToken);
-
-  const res = await fetch(TOKEN_URL, {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body,
-  });
-  if (!res.ok)
-    throw new Error(`Refresh failed: ${res.status} ${res.statusText}`);
-
-  const json = (await res.json()) as {
-    access_token: string;
-    refresh_token?: string;
-    token_type?: string;
-  };
-
-  setTokens(
-    json.access_token,
-    json.refresh_token ?? state.refreshToken,
-    json.token_type ?? state.tokenType
-  );
-  return json;
-}
-
-export async function getMe() {
-  if (!state.accessToken)
-    throw new Error("Not authenticated. Use /sc connect first.");
-  const res = await fetch(`${API_BASE}/me`, {
-    headers: { Authorization: `${state.tokenType} ${state.accessToken}` },
-  });
-  if (!res.ok)
-    throw new Error(`SoundCloud /me failed: ${res.status} ${res.statusText}`);
-  return res.json();
-}
+export const soundcloud = new SoundCloudClient();

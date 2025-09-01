@@ -1,6 +1,7 @@
 import "./commands";
 import type { RouterTypes } from "bun";
 import signale from "signale";
+import { soundcloud } from "./integrations";
 import { initWatch, startWatch, stopWatch } from "./integrations/google";
 import { config, discordClient } from "./lib";
 import { dbCleanup, dbConnect } from "./lib/db";
@@ -14,6 +15,7 @@ discordClient.login(config.discordToken);
 
 // TODO: some kind of bot disable when the db is not connected
 await dbConnect();
+await soundcloud.hydrate();
 await initWatch();
 await startWatch(`https://56d847b3ddf7.ngrok-free.app/google/changes`);
 
@@ -48,11 +50,16 @@ Bun.serve({
 });
 
 process.on("SIGINT", async () => {
+  await dbCleanup();
   await stopWatch();
   process.exit(0);
 });
 process.on("SIGTERM", async () => {
+  await dbCleanup();
   await stopWatch();
   process.exit(0);
 });
-process.on("exit", () => dbCleanup());
+process.on("exit", async () => {
+  await stopWatch();
+  await dbCleanup();
+});

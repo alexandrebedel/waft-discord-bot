@@ -1,5 +1,7 @@
 import { config } from "@waft/lib";
 import { SoundCloudAuth } from "@waft/models";
+import type { UploadTrackParams } from "@waft/types";
+import { openFile } from "@waft/utils/io";
 import signale from "signale";
 import { SoundCloudError, SoundCloudErrorType } from "../errors";
 
@@ -212,6 +214,107 @@ class SoundCloudClient {
     ).lean();
 
     return doc;
+  }
+
+  private async authedMultipart(
+    path: string,
+    form: FormData,
+    method: "POST" | "PUT" = "POST"
+  ) {
+    if (!this.state.accessToken) {
+      throw new SoundCloudError(
+        "Not authenticated. Use /sc connect first.",
+        SoundCloudErrorType.NotConnected
+      );
+    }
+
+    const doFetch = () => {
+      return fetch(`${API_BASE}${path}`, {
+        method,
+        headers: {
+          Authorization: `${this.state.tokenType} ${this.state.accessToken}`,
+        },
+        body: form,
+      });
+    };
+
+    let res = await doFetch();
+
+    if (res.status === 401 || res.status === 403) {
+      if (this.state.refreshToken) {
+        await this.refreshAccessToken().catch(() => {});
+        res = await doFetch();
+      }
+    }
+    if (!res.ok) {
+      const text = await res.text();
+      if (res.status === 401 || res.status === 403) {
+        throw new SoundCloudError(
+          "SoundCloud auth expired or revoked. Run `/sc connect` again.",
+          SoundCloudErrorType.AuthExpired
+        );
+      }
+      throw new SoundCloudError(
+        `SoundCloud API error ${res.status}: ${text}`,
+        SoundCloudErrorType.APIError
+      );
+    }
+    return res;
+  }
+
+  /**
+   * Upload d’un track.
+   * @param params
+   *  - filePath: chemin local du fichier audio
+   *  - title: titre du morceau
+   *  - sharing: "public" | "private" (défaut "private" conseillé)
+   *  - downloadable/streamable: flags
+   *  - genre/tagList/description: métadonnées
+   *  - releaseDate: Date optionnelle
+   *  - artworkPath: image pour la cover (jpg/png)
+   */
+  async uploadTrack(params: UploadTrackParams) {
+    const form = new FormData();
+    const file = await openFile(params.filepath);
+
+    form.append("track[title]", params.title);
+    form.append("track[asset_data]", file);
+    form.append("track[sharing]", "private"); // TODO: change this in the future
+    form.append("track[downloadable]", String(params.downloadable ?? true));
+    form.append("track[streamable]", String(params.streamable ?? true));
+
+    if (params.genre) {
+      form.append("track[genre]", params.genre);
+    }
+
+    if (params.tagList) {
+      // TODO: add default tags
+      const tags = Array.isArray(params.tagList)
+        ? params.tagList.join(" ")
+        : params.tagList;
+      form.append("track[tag_list]", tags);
+    }
+
+    if (params.description) {
+      form.append("track[description]", params.description);
+    }
+
+    if (params.releaseDate) {
+      // format ISO ou "YYYY-MM-DD"
+      form.append("track[release_date]", params.releaseDate.toISOString());
+    }
+
+    // if (params.artworkPath) {
+    //   const artworkFile = Bun.file(params.artworkPath);
+
+    //   if (artworkFile && (await artworkFile.exists()) === true) {
+    //     form.append("track[artwork_data]", artworkFile);
+    //   }
+    // }
+
+    const res = await this.authedMultipart("/tracks", form, "POST");
+
+    return res.json();
   }
 }
 

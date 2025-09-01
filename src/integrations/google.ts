@@ -1,3 +1,5 @@
+import { createWriteStream } from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { cwd } from "node:process";
 import { config } from "@waft/lib";
@@ -36,13 +38,16 @@ export async function initWatch(initialToken?: string) {
 }
 
 export async function startWatch(webhookAddress: string) {
-  if (!state.pageToken) await initWatch();
+  if (!state.pageToken) {
+    await initWatch();
+  }
+
   const { data } = await drive.changes.watch({
     pageToken: state.pageToken!,
     requestBody: {
-      id: randomUUIDv7(), // unique client-side id
+      id: randomUUIDv7(),
       type: "web_hook",
-      address: webhookAddress, // https ngrok
+      address: webhookAddress,
     },
   });
 
@@ -77,10 +82,6 @@ export async function stopWatch() {
   }
 }
 
-/**
- * Appelle changes.list en boucle jusqu’à épuisement.
- * Retourne les changements filtrables, et met à jour state.pageToken.
- */
 export async function syncChanges() {
   const all: any[] = [];
   let pageToken = state.pageToken!;
@@ -96,7 +97,7 @@ export async function syncChanges() {
       includeRemoved: true,
       includeItemsFromAllDrives: true,
       supportsAllDrives: true,
-      restrictToMyDrive: false
+      restrictToMyDrive: false,
     });
 
     signale.log(data);
@@ -111,12 +112,7 @@ export async function syncChanges() {
   // update token pour la prochaine fois
   state.pageToken = newStartPageToken || pageToken;
 
-  return { pageToken: state.pageToken!, changes: all };
-}
-
-// util
-export function channelExpiresInMs() {
-  return state.expiration ? state.expiration - Date.now() : null;
+  return { pageToken: state.pageToken, changes: all };
 }
 
 export async function listFiles() {
@@ -139,6 +135,41 @@ export async function createReleaseFolder(name: string) {
   });
 
   return res.data;
+}
+
+export async function downloadDriveFileToTmp(fileId: string) {
+  const meta = await drive.files.get({
+    fileId,
+    fields: "id,name,mimeType,size",
+    supportsAllDrives: true,
+  });
+
+  const name = meta.data.name ?? `drive_${fileId}`;
+  const tmpPath = join(tmpdir(), name);
+  const dest = createWriteStream(tmpPath);
+  const res = await drive.files.get(
+    { fileId, alt: "media", supportsAllDrives: true },
+    { responseType: "stream" }
+  );
+
+  await new Promise<void>((resolve, reject) => {
+    res.data
+      .on("end", () => {
+        resolve();
+      })
+      .on("error", (err: unknown) => {
+        reject(err);
+      })
+      .pipe(dest);
+  });
+
+  signale.success(`[Drive] Downloaded ${name} -> ${tmpPath}`);
+  return {
+    path: tmpPath,
+    name,
+    mimeType: meta.data.mimeType ?? "application/octet-stream",
+    size: meta.data.size ? Number(meta.data.size) : undefined,
+  };
 }
 
 export async function watchDrive() {

@@ -28,6 +28,14 @@ const envSchema = z
     scClientId: env.SC_CLIENT_ID,
     scClientSecret: env.SC_CLIENT_SECRET,
     scRedirectUri: env.SC_REDIRECT_URI,
+    scDefaultTrackTags: [
+      "techno",
+      "hard",
+      "hardgroove",
+      "groovy",
+      "underground",
+      "waft",
+    ] as const,
   }));
 
 export const config = envSchema.parse(Bun.env);

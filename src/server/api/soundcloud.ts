@@ -13,7 +13,7 @@ export async function GET(req: Request) {
     return new Response(`SoundCloud error: ${error}`, { status: 400 });
   }
   if (!code) {
-    return new Response("Missing ?code", { status: 400 });
+    return new Response("Missing code parameter", { status: 400 });
   }
   try {
     const res = await exchangeCode(code);
@@ -22,7 +22,7 @@ export async function GET(req: Request) {
     return Response.redirect(DISCORD_REDIRECT, 302);
   } catch (e) {
     // @ts-expect-error
-    return new Response(`❌ Token exchange failed: ${e?.message ?? e}`, {
+    return new Response(`Token exchange failed: ${e?.message ?? e}`, {
       status: 500,
     });
   }

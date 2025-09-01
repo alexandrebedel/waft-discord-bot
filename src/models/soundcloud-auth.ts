@@ -1,15 +1,21 @@
 import { model, Schema } from "mongoose";
 
-const SoundcloudSchema = new Schema(
+const SoundCloudAuthSchema = new Schema(
   {
-    key: { type: String, default: "soundcloud", unique: true },
+    _id: { type: String, default: "soundcloud", immutable: true },
     accessToken: { type: String, required: true },
-    refreshToken: { type: String, required: true },
-    tokenType: { type: String, default: "Bearer" },
-    expiresAt: { type: Date, required: true },
-    scope: { type: String, default: "" },
+    refreshToken: { type: String, default: null },
+    tokenType: { type: String, default: "OAuth" },
+    scope: { type: String, default: null },
+    expiresAt: { type: Date, default: null },
+    account: {
+      id: { type: Number },
+      username: { type: String },
+      permalink: { type: String },
+      avatar_url: { type: String },
+    },
   },
-  { timestamps: true }
+  { timestamps: true, _id: false }
 );
 
-export const SoundcloudAuth = model("SoundcloudAuth", SoundcloudSchema);
+export const SoundCloudAuth = model("SoundCloudAuth", SoundCloudAuthSchema);

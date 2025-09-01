@@ -34,9 +34,9 @@ export function isConnected() {
   return !!state.accessToken;
 }
 
-// --- oauth helpers ---
 export function buildAuthUrl(stateParam?: string) {
   const url = new URL(AUTH_BASE);
+
   url.searchParams.set("client_id", config.scClientId);
   url.searchParams.set("response_type", "code");
   url.searchParams.set("redirect_uri", config.scRedirectUri);

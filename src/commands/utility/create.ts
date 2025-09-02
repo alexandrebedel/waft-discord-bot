@@ -1,6 +1,6 @@
 import { RELEASE_TYPES, type ReleaseType } from "@waft/constants";
 import { CommandHandler } from "@waft/decorators";
-import { createReleaseFolder } from "@waft/integrations/google";
+import { createReleaseFolder, drive } from "@waft/integrations";
 import { config } from "@waft/lib";
 import { Release } from "@waft/models";
 import type { IWAFTCommand, WAFTCommandInteraction } from "@waft/types";
@@ -88,17 +88,25 @@ export default class CreateCommand implements ISetupCommand {
   ) {
     const catalog = getCatalog(catNumber, type);
     const result = await this.parseCommands(type, name, catalog);
-    const document = await Release.create(result);
     const folder = await createReleaseFolder(name, result.lineType);
 
     if (!folder.id) {
-      // check pour rollback une transaction en cas d'erreur
-      // avec un disposable de préférence
-      await document.deleteOne();
-      throw new Error("Failed to create the release");
+      throw new Error("Failed to create the release folder");
     }
-    document.driveFolderId = folder.id;
-    return { document, folder };
+    try {
+      const document = await Release.create({
+        ...result,
+        driveFolderId: folder.id,
+      });
+
+      return { document, folder };
+    } catch (err) {
+      try {
+        // TODO: move this to service
+        await drive.files.delete({ fileId: folder.id, supportsAllDrives: true });
+      } catch {}
+      throw err;
+    }
   }
 
   private async parseCommands(

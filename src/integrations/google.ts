@@ -13,7 +13,7 @@ const auth = new google.auth.GoogleAuth({
   scopes: ["https://www.googleapis.com/auth/drive"],
 });
 
-const drive = google.drive({ version: "v3", auth });
+export const drive = google.drive({ version: "v3", auth });
 const folderIds = {
   mainline: config.googleMainlineFolder,
   subline: config.googleSublineFolder,

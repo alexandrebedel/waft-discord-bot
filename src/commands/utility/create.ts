@@ -51,21 +51,17 @@ export default class CreateCommand implements ISetupCommand {
       .getString("type", true)
       .trim() as ReleaseType;
     const name = interaction.options.getString("name", true).trim();
-    const catNumber = interaction.options.getInteger("catalog", true);
-    const catalog = getCatalog(catNumber, type);
+    const catNb = interaction.options.getInteger("catalog", true);
 
-    const result = await this.parseCommands(type, name, catalog);
-    const document = await Release.create(result);
-    const folder = await createReleaseFolder(name);
+    const { document, folder } = await this.createRelease(catNb, name, type);
     const message = await sendMessageToReleaseChannel({
       content: [
-        `✨ **${catalog} — ${name} — Planning** ✨`,
+        `✨ **${document.catalog} — ${name} — Planning** ✨`,
         "",
         "Calendrier des sorties",
         "Merci d'updater l'état de vos tracks (fichier master, pochette, etc.) pour que tout roule 👌",
         "",
-        "📂 Dossier Google Drive :",
-        folder.webViewLink,
+        `📂 [Dossier Google Drive](${folder.webViewLink})`,
       ].join("\n"),
       flags: MessageFlags.SuppressEmbeds,
     });
@@ -75,15 +71,34 @@ export default class CreateCommand implements ISetupCommand {
     } catch {}
 
     document.planningMessageId = message.id;
-    document.threadId = await startReleaseThread(message, catalog);
-    document.driveFolderId = folder.id;
+    document.threadId = await startReleaseThread(message, document.catalog);
     await document.save();
     await interaction.editReply({
       content:
-        `✅ Planning créé pour **${name}** \`(${catalog})\` dans <#${message.channelId}>` +
+        `✅ Planning créé pour **${name}** \`(${document.catalog})\` dans <#${message.channelId}>` +
         `\n📝 [Voir le message](${message.url})` +
         (document.threadId ? `\n💬 Thread: <#${document.threadId}>` : ""),
     });
+  }
+
+  private async createRelease(
+    catNumber: number,
+    name: string,
+    type: ReleaseType
+  ) {
+    const catalog = getCatalog(catNumber, type);
+    const result = await this.parseCommands(type, name, catalog);
+    const document = await Release.create(result);
+    const folder = await createReleaseFolder(name, result.lineType);
+
+    if (!folder.id) {
+      // check pour rollback une transaction en cas d'erreur
+      // avec un disposable de préférence
+      await document.deleteOne();
+      throw new Error("Failed to create the release");
+    }
+    document.driveFolderId = folder.id;
+    return { document, folder };
   }
 
   private async parseCommands(
@@ -95,6 +110,7 @@ export default class CreateCommand implements ISetupCommand {
       catalog,
       type,
       title: name,
+      lineType: catalog.includes("-") ? "subline" : "mainline", // Check si c'est ok sur le long terme
       channelId: config.discordReleaseChannelId,
     };
 

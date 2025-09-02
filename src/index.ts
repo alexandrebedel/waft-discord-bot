@@ -17,7 +17,7 @@ discordClient.login(config.discordToken);
 await dbConnect();
 await soundcloud.hydrate();
 await initWatch();
-await startWatch(`https://56d847b3ddf7.ngrok-free.app/google/changes`);
+await startWatch(`${config.appUrl}google/changes`);
 
 // TODO: integrate middleware chain
 Bun.serve({

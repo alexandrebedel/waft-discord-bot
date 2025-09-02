@@ -1,6 +1,7 @@
 import type { RouterTypes } from "bun";
 
-export type ReleaseType = typeof RELEASE_TYPES[number]['value'];
+export type ReleaseType = (typeof RELEASE_TYPES)[number]["value"];
+export type LineType = (typeof LINE_TYPES)[number];
 
 export const HTTP_METHODS = [
   "GET",
@@ -18,3 +19,5 @@ export const RELEASE_TYPES = [
   { name: "Free Download (FDL)", value: "FDL" },
   { name: "Compilation (COMP)", value: "COMP" },
 ] as const;
+
+export const LINE_TYPES = ["mainline", "subline"] as const;

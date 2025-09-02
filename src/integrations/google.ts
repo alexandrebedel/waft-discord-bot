@@ -2,6 +2,7 @@ import { createWriteStream } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { cwd } from "node:process";
+import type { LineType } from "@waft/constants";
 import { config } from "@waft/lib";
 import { randomUUIDv7 } from "bun";
 import { google } from "googleapis";
@@ -13,6 +14,11 @@ const auth = new google.auth.GoogleAuth({
 });
 
 const drive = google.drive({ version: "v3", auth });
+const folderIds = {
+  mainline: config.googleMainlineFolder,
+  subline: config.googleSublineFolder,
+  premieres: config.googlePremieresFolder,
+};
 
 // move to db
 const state = {
@@ -115,23 +121,24 @@ export async function syncChanges() {
   return { pageToken: state.pageToken, changes: all };
 }
 
-export async function listFiles() {
+export async function listFiles(line: "mainline" | "subline" | "premieres") {
   const res = await drive.files.list({
-    q: `'${config.googleTracksFolder}' in parents`,
+    q: `'${folderIds[line]}' in parents`,
     fields: "files(id, name, mimeType, createdTime, modifiedTime)",
   });
 
   return res.data.files;
 }
 
-export async function createReleaseFolder(name: string) {
+export async function createReleaseFolder(name: string, lineType: LineType) {
   const res = await drive.files.create({
     requestBody: {
       name,
       mimeType: "application/vnd.google-apps.folder",
-      parents: [config.googleTracksFolder],
+      parents: [folderIds[lineType]],
     },
     fields: "id, name, webViewLink",
+    supportsAllDrives: true,
   });
 
   return res.data;

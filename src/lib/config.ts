@@ -2,11 +2,20 @@ import { z } from "zod";
 
 const envSchema = z
   .object({
+    APP_URL: z.url(),
     MONGO_URI: z.url(),
     GOOGLE_APPLICATION_CREDENTIALS: z
       .string()
       .min(1, "GOOGLE_APPLICATION_CREDENTIALS is required"),
-    GOOGLE_TRACKS_FOLDER: z.string().min(1, "GOOGLE_TRACKS_FOLDER is required"),
+    GOOGLE_MAINLINE_FOLDER: z
+      .string()
+      .min(1, "GOOGLE_MAINLINE_FOLDER is required"),
+    GOOGLE_SUBLINE_FOLDER: z
+      .string()
+      .min(1, "GOOGLE_SUBLINE_FOLDER is required"),
+    GOOGLE_PREMIERES_FOLDER: z
+      .string()
+      .min(1, "GOOGLE_PREMIERES_FOLDER is required"),
     DISCORD_CLIENT_ID: z.string().min(1, "DISCORD_CLIENT_ID is required"),
     DISCORD_GUILD_ID: z.string().min(1, "DISCORD_GUILD_ID is required"),
     DISCORD_TOKEN: z.string().min(1, "DISCORD_TOKEN is required"),
@@ -18,9 +27,12 @@ const envSchema = z
     SC_REDIRECT_URI: z.string().min(1, "SC_REDIRECT_URI is required"),
   })
   .transform((env) => ({
+    appUrl: env.APP_URL,
     mongoUri: env.MONGO_URI,
     googleCredentials: env.GOOGLE_APPLICATION_CREDENTIALS,
-    googleTracksFolder: env.GOOGLE_TRACKS_FOLDER,
+    googleMainlineFolder: env.GOOGLE_MAINLINE_FOLDER,
+    googleSublineFolder: env.GOOGLE_SUBLINE_FOLDER,
+    googlePremieresFolder: env.GOOGLE_PREMIERES_FOLDER,
     discordClientId: env.DISCORD_CLIENT_ID,
     discordGuildId: env.DISCORD_GUILD_ID,
     discordToken: env.DISCORD_TOKEN,

@@ -1,4 +1,4 @@
-import { RELEASE_TYPES } from "@waft/constants";
+import { LINE_TYPES, RELEASE_TYPES } from "@waft/constants";
 import { z } from "zod";
 
 export type CreateReleaseZod = z.infer<typeof createReleaseZ>;
@@ -20,17 +20,20 @@ export const releaseZ = z.object({
         "Invalid catalog. Use `WAFT001` or `WAFT-AAA001` (e.g., `WAFT-FDL004`).",
     }),
   type: z.enum(RELEASE_TYPES.map((v) => v.value)),
+  lineType: z.enum(LINE_TYPES),
   title: z.string().trim().optional(),
   releaseDate: z.coerce.date().optional(),
   channelId: z.string(),
   planningMessageId: z.string().optional(),
   threadId: z.string().optional(),
+  driveFolderId: z.string().optional(),
 });
 
 export const createReleaseZ = releaseZ.pick({
   catalog: true,
   type: true,
   title: true,
+  lineType: true,
   releaseDate: true,
   channelId: true,
 });

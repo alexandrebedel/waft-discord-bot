@@ -1,4 +1,4 @@
-import { RELEASE_TYPES } from "@waft/constants";
+import { LINE_TYPES, RELEASE_TYPES } from "@waft/constants";
 import { model, Schema } from "mongoose";
 
 // mainline: WAFT001
@@ -9,6 +9,11 @@ const ReleaseSchema = new Schema(
     type: {
       type: String,
       enum: RELEASE_TYPES.map((v) => v.value),
+      required: true,
+    },
+    lineType: {
+      type: String,
+      enum: LINE_TYPES,
       required: true,
     },
     title: { type: String },

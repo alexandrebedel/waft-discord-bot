@@ -24,7 +24,6 @@ const envSchema = z
       .min(1, "DISCORD_RELEASE_CHANNEL_ID is required"),
     SC_CLIENT_ID: z.string().min(1, "SC_CLIENT_ID is required"),
     SC_CLIENT_SECRET: z.string().min(1, "SC_CLIENT_SECRET is required"),
-    SC_REDIRECT_URI: z.string().min(1, "SC_REDIRECT_URI is required"),
   })
   .transform((env) => ({
     appUrl: env.APP_URL,
@@ -39,7 +38,7 @@ const envSchema = z
     discordReleaseChannelId: env.DISCORD_RELEASE_CHANNEL_ID,
     scClientId: env.SC_CLIENT_ID,
     scClientSecret: env.SC_CLIENT_SECRET,
-    scRedirectUri: env.SC_REDIRECT_URI,
+    scRedirectUri: `${env.APP_URL}/soundcloud`,
     scDefaultTrackTags: [
       "techno",
       "hard",

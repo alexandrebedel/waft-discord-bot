@@ -52,6 +52,23 @@ try {
 }
 
 discordClient.on("interactionCreate", async (interaction) => {
+  if (interaction.isAutocomplete()) {
+    const instance = commandInstances.get(interaction.commandName);
+
+    try {
+      if (instance?.autocomplete) {
+        await instance.autocomplete(interaction);
+      } else {
+        await interaction.respond([]);
+      }
+    } catch {
+      try {
+        await interaction.respond([]);
+      } catch {}
+    }
+    return;
+  }
+
   if (!interaction.isChatInputCommand()) {
     return;
   }

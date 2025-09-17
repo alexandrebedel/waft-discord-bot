@@ -1,6 +1,6 @@
 import { RELEASE_TYPES, type ReleaseType } from "@waft/constants";
 import { CommandHandler } from "@waft/decorators";
-import { createReleaseFolder, drive } from "@waft/integrations";
+import { gdrive } from "@waft/integrations";
 import { config } from "@waft/lib";
 import { Release } from "@waft/models";
 import type { IWAFTCommand, WAFTCommandInteraction } from "@waft/types";
@@ -88,7 +88,7 @@ export default class CreateCommand implements ISetupCommand {
   ) {
     const catalog = getCatalog(catNumber, type);
     const result = await this.parseCommands(type, name, catalog);
-    const folder = await createReleaseFolder(name, result.lineType);
+    const folder = await gdrive.createReleaseFolder(name, result.lineType);
 
     if (!folder.id) {
       throw new Error("Failed to create the release folder");
@@ -102,8 +102,7 @@ export default class CreateCommand implements ISetupCommand {
       return { document, folder };
     } catch (err) {
       try {
-        // TODO: move this to service
-        await drive.files.delete({ fileId: folder.id, supportsAllDrives: true });
+        await gdrive.deleteFilesById(folder.id);
       } catch {}
       throw err;
     }

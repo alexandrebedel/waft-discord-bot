@@ -1,8 +1,7 @@
 import "./commands";
+import { soundcloud } from "@waft/integrations";
 import type { RouterTypes } from "bun";
 import signale from "signale";
-import { soundcloud } from "./integrations";
-import { initWatch, startWatch, stopWatch } from "./integrations/google";
 import { config, discordClient } from "./lib";
 import { dbCleanup, dbConnect } from "./lib/db";
 import { handlerCache, router } from "./server";
@@ -13,11 +12,10 @@ discordClient.once("clientReady", (client) => {
 
 discordClient.login(config.discordToken);
 
-// TODO: some kind of bot disable when the db is not connected
 await dbConnect();
 await soundcloud.hydrate();
-await initWatch();
-await startWatch(`${config.appUrl}google/changes`);
+// await gdrive.initWatch();
+// await gdrive.startWatch(`${config.appUrl}google/changes`);
 
 // TODO: integrate middleware chain
 Bun.serve({
@@ -51,15 +49,15 @@ Bun.serve({
 
 process.on("SIGINT", async () => {
   await dbCleanup();
-  await stopWatch();
+  // await gdrive.stopWatch();
   process.exit(0);
 });
 process.on("SIGTERM", async () => {
   await dbCleanup();
-  await stopWatch();
+  // await gdrive.stopWatch();
   process.exit(0);
 });
 process.on("exit", async () => {
-  await stopWatch();
+  // await gdrive.stopWatch();
   await dbCleanup();
 });

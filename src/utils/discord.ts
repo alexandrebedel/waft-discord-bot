@@ -32,3 +32,21 @@ export async function startReleaseThread(message: Message, catalog: string) {
     return null;
   }
 }
+
+export function renderTracklistLines(
+  tracks: Array<{
+    index: number;
+    artist: string;
+    title: string;
+    driveWebViewLink?: string;
+  }>
+) {
+  return tracks
+    .sort((a, b) => a.index - b.index)
+    .map((t) => {
+      const base = `**${t.index}.** ${t.artist} — *${t.title}*`;
+
+      return t.driveWebViewLink ? `${base} • <${t.driveWebViewLink}>` : base;
+    })
+    .join("\n");
+}

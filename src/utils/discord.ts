@@ -69,7 +69,6 @@ export function renderReleaseMessage(opts: {
     "Merci d'updater l'état de vos tracks (fichier master, pochette, etc.) pour que tout roule 👌",
     "",
     `📂 [Dossier Google Drive](${driveUrl})`,
-    "",
     "## 📅 **Planning**",
     planning,
     "",
@@ -85,7 +84,6 @@ function renderPlanningTrack(tracks: any[]) {
   if (sorted.length === 0) {
     return "_Aucune date renseignée pour l'instant._";
   }
-
   return sorted
     .map((t, i) => {
       const dateStr = t.releaseDate ? fmtDate(t.releaseDate) : "Date à définir";

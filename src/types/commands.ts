@@ -1,4 +1,5 @@
 import type {
+  AutocompleteInteraction,
   Interaction,
   ModalSubmitInteraction,
   SlashCommandBuilder,
@@ -10,6 +11,6 @@ export interface IWAFTCommand<
 > {
   command: TCommand;
   handler(interaction: Interaction): Promise<THandlerReturn>;
-  autocomplete?(interaction: Interaction): Promise<unknown>;
+  autocomplete?(interaction: AutocompleteInteraction): Promise<unknown>;
   modal?(interaction: ModalSubmitInteraction): Promise<unknown>;
 }

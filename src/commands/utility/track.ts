@@ -53,7 +53,6 @@ export default class TrackCommand implements ITrackCommand {
         )
     );
 
-  @CommandHandler({ autoDefer: false })
   public async handler(interaction: WAFTCommandInteraction) {
     const sub = interaction.options.getSubcommand(true);
 
@@ -160,6 +159,7 @@ export default class TrackCommand implements ITrackCommand {
     });
   }
 
+  @CommandHandler({ autoDefer: false, requireAdminRole: true })
   private async handleDelete(interaction: WAFTCommandInteraction) {
     const catalog = interaction.options.getString("catalog", true).trim();
     const index = interaction.options.getInteger("index", true);

@@ -1,11 +1,18 @@
+import { config } from "@waft/lib";
 import { assertTextChannel } from "@waft/utils";
-import { type ChatInputCommandInteraction, MessageFlags } from "discord.js";
+import {
+  type ChatInputCommandInteraction,
+  type GuildMemberRoleManager,
+  type Interaction,
+  MessageFlags,
+} from "discord.js";
 import signale from "signale";
 import { ZodError } from "zod";
 
 type CommandHandlerOptions = {
   skipTextChannelAssertion?: boolean;
   autoDefer?: boolean;
+  requireAdminRole?: boolean;
 };
 
 function extractErrorMsg(err: unknown) {
@@ -53,6 +60,9 @@ export function CommandHandler(options: CommandHandlerOptions = {}) {
         if (!options.skipTextChannelAssertion) {
           assertTextChannel(interaction);
         }
+        if (options.requireAdminRole) {
+          assertIsAdmin(interaction);
+        }
         return await original.call(this, interaction);
       } catch (err) {
         const msg = extractErrorMsg(err);
@@ -73,4 +83,18 @@ export function CommandHandler(options: CommandHandlerOptions = {}) {
     };
     return descriptor;
   };
+}
+
+function assertIsAdmin(interaction: Interaction) {
+  const member = interaction.member;
+
+  if (!member || !("roles" in member)) {
+    throw new Error("Impossible de vérifier tes rôles.");
+  }
+
+  const roles = (member.roles as GuildMemberRoleManager).cache;
+
+  if (!roles.has(config.discordAdminRoleId)) {
+    throw new Error("Tu n'as pas la permission d'exécuter cette commande.");
+  }
 }

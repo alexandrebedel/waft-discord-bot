@@ -22,6 +22,9 @@ const envSchema = z
     DISCORD_RELEASE_CHANNEL_ID: z
       .string()
       .min(1, "DISCORD_RELEASE_CHANNEL_ID is required"),
+    DISCORD_ADMIN_ROLE_ID: z
+      .string()
+      .min(1, "DISCORD_ADMIN_ROLE_ID is required"),
     SC_CLIENT_ID: z.string().min(1, "SC_CLIENT_ID is required"),
     SC_CLIENT_SECRET: z.string().min(1, "SC_CLIENT_SECRET is required"),
   })
@@ -36,6 +39,7 @@ const envSchema = z
     discordGuildId: env.DISCORD_GUILD_ID,
     discordToken: env.DISCORD_TOKEN,
     discordReleaseChannelId: env.DISCORD_RELEASE_CHANNEL_ID,
+    discordAdminRoleId: env.DISCORD_ADMIN_ROLE_ID,
     scClientId: env.SC_CLIENT_ID,
     scClientSecret: env.SC_CLIENT_SECRET,
     scRedirectUri: `${env.APP_URL}/soundcloud`,

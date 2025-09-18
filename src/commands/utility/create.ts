@@ -6,12 +6,12 @@ import { Release } from "@waft/models";
 import type { IWAFTCommand, WAFTCommandInteraction } from "@waft/types";
 import { getCatalog } from "@waft/utils";
 import {
+  renderReleaseMessage,
   sendMessageToReleaseChannel,
   startReleaseThread,
 } from "@waft/utils/discord";
 import { type CreateReleaseZod, createReleaseZ } from "@waft/validation";
 import {
-  MessageFlags,
   SlashCommandBuilder,
   type SlashCommandOptionsOnlyBuilder,
 } from "discord.js";
@@ -21,26 +21,24 @@ type ISetupCommand = IWAFTCommand<SlashCommandOptionsOnlyBuilder>;
 export default class CreateCommand implements ISetupCommand {
   public command = new SlashCommandBuilder()
     .setName("create")
-    .setDescription(
-      "Create the planning message for this EP in the current channel."
-    )
+    .setDescription("Créé une nouvelle release et son message discord associé")
     .addStringOption((o) =>
       o
         .setName("type")
-        .setDescription("Type of release")
+        .setDescription("Type de release")
         .setRequired(true)
         .addChoices(...RELEASE_TYPES)
     )
     .addStringOption((o) =>
       o
         .setName("name")
-        .setDescription("EP name, e.g. Free DL Series Vol.4")
+        .setDescription("Nom de l'EP, e.g. Free DL Series Vol.4")
         .setRequired(true)
     )
     .addIntegerOption((o) =>
       o
         .setName("catalog")
-        .setDescription("Catalog number")
+        .setDescription("Numéro du catalog")
         .setRequired(true)
         .setMinValue(1)
     );
@@ -55,15 +53,13 @@ export default class CreateCommand implements ISetupCommand {
 
     const { document, folder } = await this.createRelease(catNb, name, type);
     const message = await sendMessageToReleaseChannel({
-      content: [
-        `✨ **${document.catalog} — ${name} — Planning** ✨`,
-        "",
-        "Calendrier des sorties",
-        "Merci d'updater l'état de vos tracks (fichier master, pochette, etc.) pour que tout roule 👌",
-        "",
-        `📂 [Dossier Google Drive](${folder.webViewLink})`,
-      ].join("\n"),
-      flags: MessageFlags.SuppressEmbeds,
+      content: renderReleaseMessage({
+        catalog: document.catalog,
+        title: name,
+        driveUrl: folder.webViewLink!,
+        tracks: [],
+      }),
+      flags: "SuppressEmbeds",
     });
 
     try {
@@ -104,6 +100,12 @@ export default class CreateCommand implements ISetupCommand {
       try {
         await gdrive.deleteFilesById(folder.id);
       } catch {}
+      // @ts-expect-error
+      if (err?.code === 11000) {
+        throw new Error(
+          `Une release avec le même catalog existe déjà (${catalog})`
+        );
+      }
       throw err;
     }
   }

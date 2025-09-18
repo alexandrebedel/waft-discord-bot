@@ -3,6 +3,9 @@ import type { RouterTypes } from "bun";
 export type ReleaseType = (typeof RELEASE_TYPES)[number]["value"];
 export type LineType = (typeof LINE_TYPES)[number];
 
+export const SHORT_WEEKDAYS = ["dim.", "lun.", "mar.", "mer.", "jeu.", "ven.", "sam."] as const;
+export const SHORT_MONTHS = ["janv.", "févr.", "mars", "avr.", "mai", "juin", "juil.", "août", "sept.", "oct.", "nov.", "déc."] as const;
+
 export const HTTP_METHODS = [
   "GET",
   "POST",

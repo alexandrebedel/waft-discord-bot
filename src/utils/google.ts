@@ -1,3 +1,6 @@
+export const driveUrl = (id: string) =>
+  `https://drive.google.com/drive/folders/${id}`;
+
 export function extractDriveId(
   url: string
 ):

@@ -14,7 +14,7 @@
         "noDebugger": "warn"
       },
       "style": {
-        "noNonNullAssertion": "info"
+        "noNonNullAssertion": "off"
       }
     }
   },

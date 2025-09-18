@@ -4,6 +4,8 @@ import { ChannelType, type ChatInputCommandInteraction } from "discord.js";
 export const pad = (str: string | number, len: number) =>
   str.toString().padStart(len, "0");
 
+export const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+
 export function assertTextChannel(
   i: ChatInputCommandInteraction
 ): asserts i is WAFTCommandInteraction {

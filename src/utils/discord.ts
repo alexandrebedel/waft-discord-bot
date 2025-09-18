@@ -1,3 +1,4 @@
+import { SHORT_MONTHS, SHORT_WEEKDAYS } from "@waft/constants";
 import { config } from "@waft/lib";
 import type {
   Message,
@@ -6,6 +7,7 @@ import type {
   TextChannel,
 } from "discord.js";
 import { discordClient } from "../lib/discord";
+import { capitalize } from ".";
 
 export async function sendMessageToReleaseChannel(
   content: string | MessagePayload | MessageCreateOptions
@@ -33,20 +35,98 @@ export async function startReleaseThread(message: Message, catalog: string) {
   }
 }
 
-export function renderTracklistLines(
+function fmtDate(d?: Date | string | null) {
+  if (!d) {
+    return null;
+  }
+
+  const x = typeof d === "string" ? new Date(d) : d;
+
+  if (Number.isNaN(+x)) {
+    return null;
+  }
+  return `${SHORT_WEEKDAYS[x.getDay()]} ${String(x.getDate()).padStart(
+    2,
+    "0"
+  )} ${SHORT_MONTHS[x.getMonth()]}`;
+}
+
+export function renderReleaseMessage(opts: {
+  catalog: string;
+  title: string;
+  driveUrl: string;
   tracks: Array<{
     index: number;
     artist: string;
     title: string;
-    driveWebViewLink?: string;
-  }>
-) {
+    status: "premaster" | "master";
+    releaseDate?: Date | null;
+    driveWebViewLink?: string | null;
+  }>;
+}) {
+  const { catalog, title, driveUrl, tracks } = opts;
+  const planning = renderPlanningTrack(tracks);
+  const tracklist = renderTracklist(tracks);
+
+  return [
+    `# ✨ **${catalog} — ${title} — Planning** ✨`,
+    "",
+    "Calendrier des sorties",
+    "Merci d'updater l'état de vos tracks (fichier master, pochette, etc.) pour que tout roule 👌",
+    "",
+    `📂 [Dossier Google Drive](${driveUrl})`,
+    "",
+    "## 📅 **Planning**",
+    planning,
+    "",
+    "## ✅ **Tracklist**",
+    tracklist,
+  ].join("\n");
+}
+
+// TODO: type
+function renderPlanningTrack(tracks: any[]) {
+  const sorted = tracks.sort((a, b) => a.index - b.index);
+
+  if (sorted.length === 0) {
+    return "_Aucune date renseignée pour l'instant._";
+  }
+  return sorted
+    .map(
+      (t, i) =>
+        `**${i + 1}. ${capitalize(
+          fmtDate(t.releaseDate) ?? "Date à définir"
+        )}**: ${t.artist} — *${t.title}*`
+    )
+    .join("\n");
+}
+
+// TDOO: type
+function renderTracklist(tracks: any[]) {
+  if (tracks.length === 0) {
+    return "_Aucune track pour l'instant._";
+  }
+
   return tracks
     .sort((a, b) => a.index - b.index)
     .map((t) => {
-      const base = `**${t.index}.** ${t.artist} — *${t.title}*`;
+      const when = fmtDate(t.releaseDate);
+      const header = `### ${t.artist} — _${t.title}_${
+        when ? ` (${capitalize(when)})` : ""
+      }`;
+      const file =
+        t.status === "master"
+          ? `📁 Fichier master : ${
+              t.driveWebViewLink ? `[fichier](${t.driveWebViewLink})` : "✅"
+            }`
+          : `📁 Fichier master : ❌`;
+      const cover = `🖼️ Pochette : [drive](#)`;
+      const desc = `🛠️ Description : ${
+        t.status === "master" ? "🟡 à compléter" : "❌"
+      }`;
+      const sc = `🔗 Lien SC : [public](#) · [private](#)`;
 
-      return t.driveWebViewLink ? `${base} • <${t.driveWebViewLink}>` : base;
+      return `${header}\n${file}\n${cover}\n${desc}\n${sc}`;
     })
-    .join("\n");
+    .join("\n\n---\n");
 }

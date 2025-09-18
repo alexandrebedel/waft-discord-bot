@@ -17,7 +17,7 @@ import {
   type SlashCommandSubcommandsOnlyBuilder,
 } from "discord.js";
 import signale from "signale";
-import { catalogOption } from "../options";
+import { catalogOption, indexOption } from "../options";
 
 type IReleaseCommand = IWAFTCommand<SlashCommandSubcommandsOnlyBuilder>;
 
@@ -44,13 +44,7 @@ export default class ReleaseCommand implements IReleaseCommand {
             .setDescription("Nom de l'EP, e.g. Free DL Series Vol.4")
             .setRequired(true)
         )
-        .addIntegerOption((o) =>
-          o
-            .setName("catalog")
-            .setDescription("Numéro du catalog")
-            .setRequired(true)
-            .setMinValue(1)
-        )
+        .addIntegerOption(indexOption("catalog", "Numéro du catalog"))
     )
     .addSubcommand((sc) =>
       sc

@@ -15,14 +15,14 @@ import {
 } from "discord.js";
 import signale from "signale";
 import { buildTrackModal } from "../modals";
-import { catalogOption } from "../options";
+import { catalogOption, indexOption } from "../options";
 
 export type ITrackCommand = IWAFTCommand<SlashCommandSubcommandsOnlyBuilder>;
 
 export default class TrackCommand implements ITrackCommand {
   public command = new SlashCommandBuilder()
     .setName("track")
-    .setDescription("Gestion des tracks d’une release")
+    .setDescription("Gestion des tracks d'une release")
     .addSubcommand((sc) =>
       sc
         .setName("add")
@@ -44,13 +44,14 @@ export default class TrackCommand implements ITrackCommand {
         .setName("delete")
         .setDescription("Supprime une track par index")
         .addStringOption(catalogOption)
-        .addIntegerOption((o) =>
-          o
-            .setName("index")
-            .setDescription("Index (1-based) de la track à supprimer")
-            .setRequired(true)
-            .setMinValue(1)
-        )
+        .addIntegerOption(indexOption())
+    )
+    .addSubcommand((sc) =>
+      sc
+        .setName("update")
+        .setDescription("Met à jour une track")
+        .addStringOption(catalogOption)
+        .addIntegerOption(indexOption())
     );
 
   public async handler(interaction: WAFTCommandInteraction) {

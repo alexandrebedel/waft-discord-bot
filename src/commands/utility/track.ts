@@ -13,25 +13,21 @@ import {
   SlashCommandBuilder,
   type SlashCommandSubcommandsOnlyBuilder,
 } from "discord.js";
+import signale from "signale";
 import { buildTrackModal } from "../modals";
+import { catalogOption } from "../options";
 
 export type ITrackCommand = IWAFTCommand<SlashCommandSubcommandsOnlyBuilder>;
 
 export default class TrackCommand implements ITrackCommand {
   public command = new SlashCommandBuilder()
     .setName("track")
-    .setDescription("Ajoute une track à une release")
+    .setDescription("Gestion des tracks d’une release")
     .addSubcommand((sc) =>
       sc
         .setName("add")
         .setDescription("Ajoute une track à la tracklist")
-        .addStringOption((o) =>
-          o
-            .setName("catalog")
-            .setDescription("Catalog")
-            .setRequired(true)
-            .setAutocomplete(true)
-        )
+        .addStringOption(catalogOption)
         .addStringOption((o) =>
           o
             .setName("status")
@@ -42,6 +38,19 @@ export default class TrackCommand implements ITrackCommand {
             )
             .setRequired(false)
         )
+    )
+    .addSubcommand((sc) =>
+      sc
+        .setName("delete")
+        .setDescription("Supprime une track par index")
+        .addStringOption(catalogOption)
+        .addIntegerOption((o) =>
+          o
+            .setName("index")
+            .setDescription("Index (1-based) de la track à supprimer")
+            .setRequired(true)
+            .setMinValue(1)
+        )
     );
 
   @CommandHandler({ autoDefer: false })
@@ -49,9 +58,14 @@ export default class TrackCommand implements ITrackCommand {
     const sub = interaction.options.getSubcommand(true);
 
     switch (sub) {
-      case "add":
+      case "add": {
         await buildTrackModal(interaction).show();
         break;
+      }
+      case "delete": {
+        await this.handleDelete(interaction);
+        break;
+      }
     }
   }
 
@@ -85,20 +99,21 @@ export default class TrackCommand implements ITrackCommand {
   public async modal(interaction: ModalSubmitInteraction) {
     const [, action, encodedCatalog, statusRaw] =
       interaction.customId.split(":");
-    if (action !== "add") return;
+
+    if (action !== "add") {
+      return;
+    }
 
     const parsed = trackAddZ.parse({
       catalog: decodeURIComponent(encodedCatalog!),
       status: statusRaw ?? "premaster",
-      index: interaction.fields.getTextInputValue("index"),
       artist: interaction.fields.getTextInputValue("artist"),
       title: interaction.fields.getTextInputValue("title"),
       releaseDateStr: interaction.fields.getTextInputValue("release_date"),
       driveUrl: interaction.fields.getTextInputValue("drive_url"),
     });
 
-    const { catalog, status, index, artist, title, releaseDate, driveUrl } =
-      parsed;
+    const { catalog, status, artist, title, releaseDate, driveUrl } = parsed;
     const release = await Release.findOne({ catalog }).lean();
 
     if (!release) {
@@ -106,11 +121,12 @@ export default class TrackCommand implements ITrackCommand {
     }
 
     const driveMeta = await this.checkDriveFile(driveUrl);
+    const nextIndex = await this.nextTrackIndex(release._id.toString());
 
     try {
       await Track.create({
         releaseId: release._id,
-        index,
+        index: nextIndex,
         artist,
         title,
         status,
@@ -128,7 +144,7 @@ export default class TrackCommand implements ITrackCommand {
       // @ts-expect-error
       if (e?.code === 11000) {
         throw new Error(
-          `Une track à la position ${index} de la tracklist est déjà en place pour cette release.`
+          `Une track à la position ${nextIndex} de la tracklist est déjà en place pour cette release.`
         );
       }
       throw e;
@@ -139,12 +155,52 @@ export default class TrackCommand implements ITrackCommand {
       ? ` • ${hyperlink("Drive", driveMeta.webViewLink)}`
       : "";
     return interaction.reply({
-      content: `✅ Track **${index}. ${artist} — _${title}_** ajoutée à **${catalog}**${link}.`,
+      content: `✅ Track **${nextIndex}. ${artist} — _${title}_** ajoutée à **${catalog}**${link}.`,
       flags: "Ephemeral",
     });
   }
 
-  private async checkDriveFile(driveUrl: string) {
+  private async handleDelete(interaction: WAFTCommandInteraction) {
+    const catalog = interaction.options.getString("catalog", true).trim();
+    const index = interaction.options.getInteger("index", true);
+
+    const release = await Release.findOne({ catalog }).lean();
+
+    if (!release) {
+      throw new Error(`Release introuvable pour \`${catalog}\`.`);
+    }
+
+    const toDelete = await Track.findOne({
+      releaseId: release._id,
+      index,
+    }).lean();
+
+    if (!toDelete) {
+      throw new Error(
+        `Aucune track à l'index \`${index}\` pour la release \`${catalog}\`.`
+      );
+    }
+
+    try {
+      await Track.deleteOne({ releaseId: release._id, index });
+      await Track.updateMany(
+        { releaseId: release._id, index: { $gt: index } },
+        { $inc: { index: -1 } }
+      );
+    } catch (e) {
+      signale.error(e);
+      throw new Error(
+        `La suppression de la track à échoué pour la release ${catalog} à l'index ${index}`
+      );
+    }
+    await this.updateReleaseMessage(release._id.toString());
+    return interaction.reply({
+      content: `🗑️ Track **#${index} ${toDelete.artist} — _${toDelete.title}_** supprimée de **${catalog}**.`,
+      flags: "Ephemeral",
+    });
+  }
+
+  private async checkDriveFile(driveUrl?: string) {
     if (!driveUrl) {
       return;
     }
@@ -199,5 +255,15 @@ export default class TrackCommand implements ITrackCommand {
     if (msg.content !== content) {
       await msg.edit({ content, flags: "SuppressEmbeds" });
     }
+  }
+
+  private async nextTrackIndex(releaseId: string) {
+    const last = await Track.find({ releaseId })
+      .sort({ index: -1 })
+      .limit(1)
+      .select("index")
+      .lean();
+
+    return last.length && last[0] ? Number(last[0].index) + 1 : 1;
   }
 }

@@ -18,13 +18,6 @@ export function buildTrackModal(interaction: WAFTCommandInteraction) {
     .setCustomId(`track:add:${encodeURIComponent(catalog)}:${status}`)
     .setTitle(`Ajouter une track — ${catalog}`);
 
-  const indexInput = new TextInputBuilder()
-    .setCustomId("index")
-    .setLabel("Index (1-based)")
-    .setRequired(true)
-    .setStyle(TextInputStyle.Short)
-    .setValue("1");
-
   const artistInput = new TextInputBuilder()
     .setCustomId("artist")
     .setLabel("Artist")
@@ -50,7 +43,6 @@ export function buildTrackModal(interaction: WAFTCommandInteraction) {
     .setStyle(TextInputStyle.Short);
 
   modal.addComponents(
-    new ActionRowBuilder<TextInputBuilder>().addComponents(indexInput),
     new ActionRowBuilder<TextInputBuilder>().addComponents(artistInput),
     new ActionRowBuilder<TextInputBuilder>().addComponents(titleInput),
     new ActionRowBuilder<TextInputBuilder>().addComponents(dateInput),

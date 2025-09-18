@@ -7,7 +7,6 @@ import {
   Routes,
 } from "discord.js";
 import signale from "signale";
-import type TrackCommand from "./utility/track";
 import type { ITrackCommand } from "./utility/track";
 
 const glob = new Bun.Glob("src/commands/utility/**/*.ts");

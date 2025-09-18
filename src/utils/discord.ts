@@ -6,6 +6,7 @@ import type {
   MessagePayload,
   TextChannel,
 } from "discord.js";
+import signale from "signale";
 import { discordClient } from "../lib/discord";
 import { capitalize } from ".";
 
@@ -35,16 +36,9 @@ export async function startReleaseThread(message: Message, catalog: string) {
   }
 }
 
-function fmtDate(d?: Date | string | null) {
-  if (!d) {
-    return null;
-  }
-
+function fmtDate(d: Date | string) {
   const x = typeof d === "string" ? new Date(d) : d;
 
-  if (Number.isNaN(+x)) {
-    return null;
-  }
   return `${SHORT_WEEKDAYS[x.getDay()]} ${String(x.getDate()).padStart(
     2,
     "0"
@@ -91,13 +85,14 @@ function renderPlanningTrack(tracks: any[]) {
   if (sorted.length === 0) {
     return "_Aucune date renseignée pour l'instant._";
   }
+
   return sorted
-    .map(
-      (t, i) =>
-        `**${i + 1}. ${capitalize(
-          fmtDate(t.releaseDate) ?? "Date à définir"
-        )}**: ${t.artist} — *${t.title}*`
-    )
+    .map((t, i) => {
+      const dateStr = t.releaseDate ? fmtDate(t.releaseDate) : "Date à définir";
+      const n = `${i + 1}\\.`;
+
+      return `**${n} ${capitalize(dateStr)}**: ${t.artist} — *${t.title}*`;
+    })
     .join("\n");
 }
 
@@ -110,9 +105,8 @@ function renderTracklist(tracks: any[]) {
   return tracks
     .sort((a, b) => a.index - b.index)
     .map((t) => {
-      const when = fmtDate(t.releaseDate);
       const header = `### ${t.artist} — _${t.title}_${
-        when ? ` (${capitalize(when)})` : ""
+        t.releaseDate ? ` (${capitalize(fmtDate(t.releaseDate))})` : ""
       }`;
       const file =
         t.status === "master"

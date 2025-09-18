@@ -1,26 +1,28 @@
+import { hyperlink } from "@discordjs/formatters";
 import { CommandHandler } from "@waft/decorators";
 import { gdrive } from "@waft/integrations";
-import { updateReleaseMessage } from "@waft/lib";
 import { Release, Track } from "@waft/models";
 import type { IWAFTCommand, WAFTCommandInteraction } from "@waft/types";
 import { extractDriveId } from "@waft/utils/google";
+import { trackAddZ } from "@waft/validation";
 import {
-  AutocompleteInteraction,
+  type AutocompleteInteraction,
+  type ModalSubmitInteraction,
   SlashCommandBuilder,
   type SlashCommandSubcommandsOnlyBuilder,
 } from "discord.js";
-import signale from "signale";
+import { buildTrackModal } from "../modals";
 
-type ITracklistCommand = IWAFTCommand<SlashCommandSubcommandsOnlyBuilder>;
+export type ITrackCommand = IWAFTCommand<SlashCommandSubcommandsOnlyBuilder>;
 
-export default class TrackCommand implements ITracklistCommand {
+export default class TrackCommand implements ITrackCommand {
   public command = new SlashCommandBuilder()
     .setName("track")
-    .setDescription("Manage release tracks")
+    .setDescription("Ajoute une track à une release")
     .addSubcommand((sc) =>
       sc
         .setName("add")
-        .setDescription("Add a single track")
+        .setDescription("Ajoute une track à la tracklist")
         .addStringOption((o) =>
           o
             .setName("catalog")
@@ -28,30 +30,14 @@ export default class TrackCommand implements ITracklistCommand {
             .setRequired(true)
             .setAutocomplete(true)
         )
-        .addIntegerOption((o) =>
-          o.setName("index").setDescription("Index (1-based)").setRequired(true)
-        )
-        .addStringOption((o) =>
-          o.setName("artist").setDescription("Artist").setRequired(true)
-        )
-        .addStringOption((o) =>
-          o.setName("title").setDescription("Title").setRequired(true)
-        )
         .addStringOption((o) =>
           o
             .setName("status")
-            .setDescription("Track status")
+            .setDescription("Le status de la track")
             .addChoices(
               { name: "Premaster", value: "premaster" },
               { name: "Master", value: "master" }
             )
-            .setRequired(false)
-        )
-
-        .addStringOption((o) =>
-          o
-            .setName("drive_url")
-            .setDescription("Google Drive file link")
             .setRequired(false)
         )
     );
@@ -62,10 +48,9 @@ export default class TrackCommand implements ITracklistCommand {
 
     switch (sub) {
       case "add":
-        this.handleAdd(interaction);
+        await buildTrackModal(interaction).show();
         break;
     }
-    signale.info("done");
   }
 
   public async autocomplete(interaction: AutocompleteInteraction) {
@@ -94,82 +79,86 @@ export default class TrackCommand implements ITracklistCommand {
     );
   }
 
-  private async handleAdd(interaction: WAFTCommandInteraction) {
-    const catalog = interaction.options.getString("catalog", true).trim();
-    const index = interaction.options.getInteger("index", true);
-    const artist = interaction.options.getString("artist", true).trim();
-    const title = interaction.options.getString("title", true).trim();
-    const driveUrl = interaction.options.getString("drive_url", false)?.trim();
-    const status = interaction.options.getString("status", false)?.trim();
+  @CommandHandler({ autoDefer: false })
+  public async modal(interaction: ModalSubmitInteraction) {
+    const [, action, encodedCatalog, statusRaw] =
+      interaction.customId.split(":");
+    if (action !== "add") return;
 
-    if (index < 1) {
-      return interaction.reply({
-        content: "❌ `index` doit être ≥ 1 (1-based).",
-        flags: "Ephemeral",
-      });
-    }
+    const parsed = trackAddZ.parse({
+      catalog: decodeURIComponent(encodedCatalog!),
+      status: statusRaw ?? "premaster",
+      index: interaction.fields.getTextInputValue("index"),
+      artist: interaction.fields.getTextInputValue("artist"),
+      title: interaction.fields.getTextInputValue("title"),
+      releaseDateStr: interaction.fields.getTextInputValue("release_date"),
+      driveUrl: interaction.fields.getTextInputValue("drive_url"),
+    });
 
+    const { catalog, status, index, artist, title, releaseDate, driveUrl } =
+      parsed;
     const release = await Release.findOne({ catalog }).lean();
 
     if (!release) {
-      return interaction.reply({
-        content: `❌ Release introuvable pour \`${catalog}\`.`,
-        flags: "Ephemeral",
-      });
+      throw new Error(`❌ Release introuvable pour \`${catalog}\`.`);
     }
 
-    if (!driveUrl) return;
+    const driveMeta = await this.checkDriveFile(driveUrl);
+
+    try {
+      await Track.create({
+        releaseId: release._id,
+        index,
+        artist,
+        title,
+        status,
+        releaseDate,
+        ...(driveMeta && {
+          driveFileId: driveMeta.id,
+          driveWebViewLink: driveMeta.webViewLink,
+          filename: driveMeta.name,
+          mimetype: driveMeta.mimeType,
+          size: driveMeta.size ? Number(driveMeta.size) : undefined,
+        }),
+        createdByUserId: interaction.user.id,
+      });
+    } catch (e) {
+      // @ts-expect-error
+      if (e?.code === 11000) {
+        throw new Error(
+          `Une track à la position ${index} de la tracklist est déjà en place pour cette release.`
+        );
+      }
+      throw e;
+    }
+
+    const link = driveMeta?.webViewLink
+      ? ` • ${hyperlink("Drive", driveMeta.webViewLink)}`
+      : "";
+    return interaction.reply({
+      content: `✅ Track **${index}. ${artist} — _${title}_** ajoutée à **${catalog}**${link}.`,
+      flags: "Ephemeral",
+    });
+  }
+
+  private async checkDriveFile(driveUrl: string) {
+    if (!driveUrl) {
+      return;
+    }
 
     const ex = extractDriveId(driveUrl);
 
     if (ex.type !== "file" || !ex.id) {
-      return interaction.reply({
-        content: "❌ Lien Drive invalide (attendu: lien *fichier*).",
-        flags: "Ephemeral",
-      });
+      throw new Error("❌ Lien Drive invalide (attendu: lien *fichier*).");
     }
 
     const meta = await gdrive.getFileMeta(ex.id);
 
     if (!gdrive.isLosslessAudio(meta)) {
-      return interaction.reply({
-        content:
-          "❌ Le fichier ne sembla être un fichier audio valide / pas lossless",
-        flags: "Ephemeral",
-      });
+      throw new Error(
+        "❌ Le fichier ne semble pas être un audio lossless valide (WAV/AIFF/FLAC)."
+      );
     }
-    try {
-      await Track.findOneAndUpdate(
-        { releaseId: release._id, index },
-        {
-          $set: {
-            artist,
-            title,
-            status,
-            driveWebViewLink: meta.webViewLink,
-            filename: meta.name,
-            mimetype: meta.mimeType,
-            size: meta.size,
-          },
-          $setOnInsert: { createdByUserId: interaction.user.id },
-        },
-        { upsert: true, new: true, setDefaultsOnInsert: true }
-      ).lean();
-    } catch (e) {
-      signale.error(e);
-      return interaction.reply({
-        content: "❌ Une erreur est survenue",
-        flags: "Ephemeral",
-      });
-    }
-
-    // TODO: improve
-    await updateReleaseMessage(release._id.toString());
-
-    const link = meta.webViewLink ? ` • [Drive](${meta.webViewLink})` : "";
-    return interaction.reply({
-      content: `✅ Track **${index}. ${artist} — _${title}_** ajoutée à **${catalog}**${link}.`,
-      flags: "Ephemeral",
-    });
+    return meta;
   }
 }

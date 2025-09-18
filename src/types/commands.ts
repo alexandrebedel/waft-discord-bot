@@ -1,4 +1,8 @@
-import type { Interaction, SlashCommandBuilder } from "discord.js";
+import type {
+  Interaction,
+  ModalSubmitInteraction,
+  SlashCommandBuilder,
+} from "discord.js";
 
 export interface IWAFTCommand<
   TCommand = SlashCommandBuilder,
@@ -7,4 +11,5 @@ export interface IWAFTCommand<
   command: TCommand;
   handler(interaction: Interaction): Promise<THandlerReturn>;
   autocomplete?(interaction: Interaction): Promise<unknown>;
+  modal?(interaction: ModalSubmitInteraction): Promise<unknown>;
 }

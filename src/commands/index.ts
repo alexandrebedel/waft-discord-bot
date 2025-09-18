@@ -7,6 +7,8 @@ import {
   Routes,
 } from "discord.js";
 import signale from "signale";
+import type TrackCommand from "./utility/track";
+import type { ITrackCommand } from "./utility/track";
 
 const glob = new Bun.Glob("src/commands/utility/**/*.ts");
 const commands: RESTPostAPIChatInputApplicationCommandsJSONBody[] = [];
@@ -52,6 +54,17 @@ try {
 }
 
 discordClient.on("interactionCreate", async (interaction) => {
+  if (interaction.isModalSubmit()) {
+    if (interaction.customId.startsWith("track:add:")) {
+      const instance = commandInstances.get("track") as ITrackCommand;
+
+      if (instance?.modal) {
+        await instance.modal(interaction);
+      }
+      return;
+    }
+  }
+
   if (interaction.isAutocomplete()) {
     const instance = commandInstances.get(interaction.commandName);
 
@@ -78,5 +91,5 @@ discordClient.on("interactionCreate", async (interaction) => {
   if (!instance) {
     return;
   }
-  instance.handler(interaction);
+  await instance.handler(interaction);
 });

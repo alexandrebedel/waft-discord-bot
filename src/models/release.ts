@@ -16,16 +16,20 @@ const ReleaseSchema = new Schema(
       enum: LINE_TYPES,
       required: true,
     },
-    title: { type: String },
-    releaseDate: { type: Date },
+    title: { type: String, required: true },
+    description: { type: String, required: true },
+    releaseDate: Date,
+    published: Boolean,
 
     // Discord related stuff
     channelId: { type: String, required: true },
-    planningMessageId: { type: String },
+    planningMessageId: String,
     // Drive releated stuff
-    threadId: { type: String },
+    threadId: String,
     driveFolderId: { type: String, required: true },
+    // SoundCloud releated stuff
     soundcloudPlaylistId: String,
+    soundcloudPlaylistSecret: String,
   },
   { timestamps: true }
 );

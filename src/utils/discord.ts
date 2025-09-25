@@ -6,7 +6,6 @@ import type {
   MessagePayload,
   TextChannel,
 } from "discord.js";
-import signale from "signale";
 import { discordClient } from "../lib/discord";
 import { capitalize } from ".";
 

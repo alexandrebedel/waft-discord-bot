@@ -24,3 +24,11 @@ export type SaveTokensParams = {
     avatar_url?: string;
   };
 };
+
+export type CreatePlaylistParams = {
+  title: string;
+  trackIds?: number[];
+  sharing?: "public" | "private";
+  description?: string;
+  tagList?: string | string[];
+};

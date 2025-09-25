@@ -1,6 +1,6 @@
 import { RELEASE_TYPES, type ReleaseType } from "@waft/constants";
 import { CommandHandler } from "@waft/decorators";
-import { gdrive } from "@waft/integrations";
+import { gdrive, soundcloud } from "@waft/integrations";
 import { config, discordClient } from "@waft/lib";
 import { Release, Track } from "@waft/models";
 import type { IWAFTCommand, WAFTCommandInteraction } from "@waft/types";
@@ -13,11 +13,14 @@ import {
 import { type CreateReleaseZod, createReleaseZ } from "@waft/validation";
 import {
   type AutocompleteInteraction,
+  type ModalSubmitInteraction,
   SlashCommandBuilder,
   type SlashCommandSubcommandsOnlyBuilder,
 } from "discord.js";
 import signale from "signale";
-import { catalogOption, indexOption } from "../options";
+import { catalogAutocomplete } from "../autocomplete";
+import { buildReleaseCreateModal } from "../modals";
+import { catalogOption } from "../options";
 
 type IReleaseCommand = IWAFTCommand<SlashCommandSubcommandsOnlyBuilder>;
 
@@ -38,67 +41,60 @@ export default class ReleaseCommand implements IReleaseCommand {
             .setRequired(true)
             .addChoices(...RELEASE_TYPES)
         )
-        .addStringOption((o) =>
-          o
-            .setName("name")
-            .setDescription("Nom de l'EP, e.g. Free DL Series Vol.4")
-            .setRequired(true)
-        )
-        .addIntegerOption(indexOption("catalog", "Numéro du catalog"))
     )
     .addSubcommand((sc) =>
       sc
         .setName("delete")
         .setDescription("Supprime une release et toutes ses données")
         .addStringOption(catalogOption)
+    )
+    .addSubcommand((s) =>
+      s
+        .setName("publish")
+        .setDescription(
+          "Crée une playlist SoundCloud depuis la release et y ajoute les tracks"
+        )
+        .addStringOption(catalogOption)
     );
 
-  @CommandHandler({ requireAdminRole: true })
   public async handler(interaction: WAFTCommandInteraction) {
     const sub = interaction.options.getSubcommand(true);
 
     switch (sub) {
-      case "create":
-        return this.handleCreate(interaction);
+      case "create": {
+        const type = interaction.options.getString("type", true) as ReleaseType;
+
+        await buildReleaseCreateModal(interaction, type).show();
+        break;
+      }
       case "delete":
-        return this.handleDelete(interaction);
+        await this.handleDelete(interaction);
+        break;
+      case "publish":
+        await this.handlePublish(interaction);
+        break;
     }
   }
 
-  public async autocomplete(interaction: AutocompleteInteraction) {
-    const focused = interaction.options.getFocused(true);
+  @CommandHandler({ autoDefer: false })
+  public async modal(interaction: ModalSubmitInteraction) {
+    const [prefix, action, type] = interaction.customId.split(":");
 
-    if (focused.name !== "catalog") {
+    if (prefix !== "release" || action !== "create" || !type) {
       return;
     }
+    const values = interaction.fields;
+    const name = values.getTextInputValue("name");
+    const description = values.getTextInputValue("description");
+    const catalog = values.getTextInputValue("catalog");
+    // const releaseDate = values.getTextInputValue("release_date");
+    const { document, folder } = await this.createRelease({
+      catNumber: Number(catalog),
+      name,
+      type: type as ReleaseType,
+      description,
+    });
 
-    const q = String(focused.value || "").trim();
-    const re = q.length
-      ? new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i")
-      : /.*/;
-
-    const releases = await Release.find({ catalog: re })
-      .sort({ updatedAt: -1 })
-      .limit(20)
-      .select("catalog title")
-      .lean();
-
-    await interaction.respond(
-      releases.map((r) => ({
-        name: r.title ? `${r.catalog} — ${r.title}` : r.catalog,
-        value: r.catalog,
-      }))
-    );
-  }
-
-  private async handleCreate(interaction: WAFTCommandInteraction) {
-    const type = interaction.options
-      .getString("type", true)
-      .trim() as ReleaseType;
-    const name = interaction.options.getString("name", true).trim();
-    const catNb = interaction.options.getInteger("catalog", true);
-
-    const { document, folder } = await this.createRelease(catNb, name, type);
     const message = await sendMessageToReleaseChannel({
       content: renderReleaseMessage({
         catalog: document.catalog,
@@ -116,15 +112,20 @@ export default class ReleaseCommand implements IReleaseCommand {
     document.planningMessageId = message.id;
     document.threadId = await startReleaseThread(message, document.catalog);
     await document.save();
-
-    await interaction.editReply({
+    await interaction.reply({
       content:
         `✅ Planning créé pour **${name}** \`(${document.catalog})\` dans <#${message.channelId}>` +
         `\n📝 [Voir le message](${message.url})` +
         (document.threadId ? `\n💬 Thread: <#${document.threadId}>` : ""),
+      flags: "Ephemeral",
     });
   }
 
+  public async autocomplete(interaction: AutocompleteInteraction) {
+    return catalogAutocomplete(interaction);
+  }
+
+  @CommandHandler({ requireAdminRole: true })
   private async handleDelete(interaction: WAFTCommandInteraction) {
     const catalog = interaction.options.getString("catalog", true).trim();
     const release = await Release.findOne({ catalog }).lean();
@@ -179,17 +180,44 @@ export default class ReleaseCommand implements IReleaseCommand {
     });
   }
 
-  private async createRelease(
-    catNumber: number,
-    name: string,
-    type: ReleaseType
-  ) {
+  @CommandHandler({ requireAdminRole: true })
+  private async handlePublish(interaction: WAFTCommandInteraction) {
+    const catalog = interaction.options.getString("catalog", true);
+    const release = await Release.findOne({ catalog }).lean();
+
+    if (!release) {
+      throw new Error(`Release introuvable pour \`${catalog}\`.`);
+    }
+    if (!release.soundcloudPlaylistId) {
+      const pls = await soundcloud.createPlaylist({
+        title: release.title,
+        // trackIds: [scTrack.id],
+        sharing: "private",
+        tagList: config.scDefaultTrackTags,
+        description: `Catalog: ${release.catalog}`,
+      });
+
+      signale.log(pls);
+    }
+  }
+
+  private async createPlaylist() {
+    void 0;
+  }
+
+  private async createRelease(params: {
+    type: ReleaseType;
+    catNumber: number;
+    name: string;
+    description: string;
+  }) {
+    const { catNumber, type, name, description } = params;
     const catalog = getCatalog(catNumber, type);
-    const result = await this.parseCommands(type, name, catalog);
+    const result = await this.parseCommands(type, name, catalog, description);
     const folder = await gdrive.createReleaseFolder(name, result.lineType);
 
     if (!folder.id) {
-      throw new Error("Failed to create the release folder");
+      throw new Error("Je n'ai pas réussi à créer le dossier dans le drive...");
     }
 
     try {
@@ -216,12 +244,15 @@ export default class ReleaseCommand implements IReleaseCommand {
   private async parseCommands(
     type: ReleaseType,
     name: string,
-    catalog: string
+    catalog: string,
+    description: string
   ) {
+    // TODO: release date
     const payload: CreateReleaseZod = {
       catalog,
       type,
       title: name,
+      description,
       lineType: catalog.includes("-") ? "subline" : "mainline",
       channelId: config.discordReleaseChannelId,
     };

@@ -1,5 +1,7 @@
 import { LINE_TYPES, RELEASE_TYPES } from "@waft/constants";
+import { parseReleaseDate } from "@waft/utils/planning";
 import { z } from "zod";
+import { releaseDateRefiner } from "./refiners";
 
 export type CreateReleaseZod = z.infer<typeof createReleaseZ>;
 export type ReleaseInput = z.infer<typeof releaseZ>;
@@ -21,7 +23,8 @@ export const releaseZ = z.object({
     }),
   type: z.enum(RELEASE_TYPES.map((v) => v.value)),
   lineType: z.enum(LINE_TYPES),
-  title: z.string().trim().optional(),
+  title: z.string().trim(),
+  description: z.string().trim(),
   releaseDate: z.coerce.date().optional(),
   channelId: z.string(),
   planningMessageId: z.string().optional(),
@@ -32,6 +35,7 @@ export const releaseZ = z.object({
 export const createReleaseZ = releaseZ.pick({
   catalog: true,
   type: true,
+  description: true,
   title: true,
   lineType: true,
   releaseDate: true,

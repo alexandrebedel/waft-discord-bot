@@ -18,7 +18,7 @@ export class SoundCloudHttp {
 
     if (!access) {
       throw new SoundCloudError(
-        "Not authenticated. Use /sc connect first.",
+        "Tu n'es pas authentifié. Lance `/sc connect` pour te connecter.",
         SoundCloudErrorType.NotConnected
       );
     }
@@ -47,7 +47,7 @@ export class SoundCloudHttp {
 
       if (res.status === 401 || res.status === 403) {
         throw new SoundCloudError(
-          "SoundCloud auth expired or revoked. Run `/sc connect` again.",
+          "La connection à ton compte Soundcloud à expiré. Lance `/sc connect` pour te reconnecter.",
           SoundCloudErrorType.AuthExpired
         );
       }
@@ -69,7 +69,7 @@ export class SoundCloudHttp {
 
     if (!access) {
       throw new SoundCloudError(
-        "Not authenticated. Use /sc connect first.",
+        "Tu n'es pas authentifié. Lance `/sc connect` pour te connecter.",
         SoundCloudErrorType.NotConnected
       );
     }
@@ -98,7 +98,7 @@ export class SoundCloudHttp {
 
       if (res.status === 401 || res.status === 403) {
         throw new SoundCloudError(
-          "SoundCloud auth expired or revoked. Run `/sc connect` again.",
+          "SoundCloud auth expired or revoked. Lance `/sc connect` pour te reconnecter.",
           SoundCloudErrorType.AuthExpired
         );
       }

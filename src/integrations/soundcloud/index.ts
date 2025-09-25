@@ -1,7 +1,12 @@
 import { config } from "@waft/lib";
 import { SoundCloudAuth } from "@waft/models";
-import type { SaveTokensParams, UploadTrackParams } from "@waft/types";
+import type {
+  CreatePlaylistParams,
+  SaveTokensParams,
+  UploadTrackParams,
+} from "@waft/types";
 import { openFile } from "@waft/utils/io";
+import signale from "signale";
 import { SoundCloudError, SoundCloudErrorType } from "../../errors";
 import { SoundCloudHttp } from "./http";
 
@@ -203,6 +208,34 @@ class SoundCloudClient extends SoundCloudHttp {
     const res = await super.authedMultipart("/tracks", form, "POST");
 
     return res.json();
+  }
+
+  public async createPlaylist(params: CreatePlaylistParams) {
+    const form = new FormData();
+
+    form.append("playlist[title]", params.title);
+    form.append("playlist[sharing]", "private");
+    form.append("playlist_type", "ep");
+    if (params.description) {
+      form.append("playlist[description]", params.description);
+    }
+    if (params.tagList) {
+      const tags = Array.isArray(params.tagList)
+        ? params.tagList.join(" ")
+        : params.tagList;
+      form.append("playlist[tag_list]", tags);
+    }
+    if (params.trackIds?.length) {
+      params.trackIds.forEach((id, i) => {
+        form.append(`playlist[tracks][${i}][id]`, String(id));
+      });
+    }
+
+    const res = await super.authedMultipart("/playlists", form, "POST");
+    const data = await res.json();
+
+    signale.log({ data });
+    return data;
   }
 
   private async saveTokens(params: SaveTokensParams) {

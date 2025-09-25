@@ -10,3 +10,17 @@ export type UploadTrackParams = {
   releaseDate?: Date;
   artworkPath?: string;
 };
+
+export type SaveTokensParams = {
+  accessToken: string;
+  refreshToken?: string | null;
+  tokenType?: string | null;
+  scope?: string | null;
+  expiresInSec?: number | null;
+  accountSnapshot?: {
+    id?: number;
+    username?: string;
+    permalink?: string;
+    avatar_url?: string;
+  };
+};

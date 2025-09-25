@@ -1,6 +1,6 @@
 import { config } from "@waft/lib";
 import { SoundCloudAuth } from "@waft/models";
-import type { UploadTrackParams } from "@waft/types";
+import type { SaveTokensParams, UploadTrackParams } from "@waft/types";
 import { openFile } from "@waft/utils/io";
 import { SoundCloudError, SoundCloudErrorType } from "../../errors";
 import { SoundCloudHttp } from "./http";
@@ -168,10 +168,10 @@ class SoundCloudClient extends SoundCloudHttp {
     return json;
   }
 
-  public async getMe() {
+  public async getMe<T extends Record<string, unknown>>() {
     const res = await super.authedFetch("/me");
 
-    return res.json() as any;
+    return res.json() as Promise<T>;
   }
 
   public async uploadTrack(params: UploadTrackParams) {
@@ -205,19 +205,7 @@ class SoundCloudClient extends SoundCloudHttp {
     return res.json();
   }
 
-  private async saveTokens(params: {
-    accessToken: string;
-    refreshToken?: string | null;
-    tokenType?: string | null;
-    scope?: string | null;
-    expiresInSec?: number | null;
-    accountSnapshot?: {
-      id?: number;
-      username?: string;
-      permalink?: string;
-      avatar_url?: string;
-    };
-  }) {
+  private async saveTokens(params: SaveTokensParams) {
     const expiresAt = params.expiresInSec
       ? new Date(Date.now() + params.expiresInSec * 1000)
       : null;

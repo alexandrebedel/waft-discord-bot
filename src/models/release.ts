@@ -19,11 +19,13 @@ const ReleaseSchema = new Schema(
     title: { type: String },
     releaseDate: { type: Date },
 
+    // Discord related stuff
     channelId: { type: String, required: true },
     planningMessageId: { type: String },
+    // Drive releated stuff
     threadId: { type: String },
     driveFolderId: { type: String, required: true },
-    // tracks: { type: [], default: [] },
+    soundcloudPlaylistId: String,
   },
   { timestamps: true }
 );

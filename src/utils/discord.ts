@@ -71,7 +71,6 @@ export function renderReleaseMessage(opts: {
     `📂 [Dossier Google Drive](${driveUrl})`,
     "## 📅 **Planning**",
     planning,
-    "",
     "## ✅ **Tracklist**",
     tracklist,
   ].join("\n");

@@ -7,6 +7,7 @@ export const trackAddZ = z
     status: z.enum(["premaster", "master"]).default("premaster"),
     artist: z.string().trim().min(1, "`artist` est requis"),
     title: z.string().trim().min(1, "`title` est requis"),
+    description: z.string().trim().min(1, "`description` est requis"),
     releaseDateStr: z
       .string()
       .optional()

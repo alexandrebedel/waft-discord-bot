@@ -109,6 +109,7 @@ export default class TrackCommand implements ITrackCommand {
       status: statusRaw ?? "premaster",
       artist: interaction.fields.getTextInputValue("artist"),
       title: interaction.fields.getTextInputValue("title"),
+      desciption: interaction.fields.getTextInputValue("desciption"),
       releaseDateStr: interaction.fields.getTextInputValue("release_date"),
       driveUrl: interaction.fields.getTextInputValue("drive_url"),
     });

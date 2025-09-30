@@ -47,6 +47,7 @@ const envSchema = z
       scClientId: env.SC_CLIENT_ID,
       scClientSecret: env.SC_CLIENT_SECRET,
       scRedirectUri,
+      scPremierePrefix: "✧₊⁺ PREMIERE ✧₊⁺",
       scDefaultTrackTags: [
         "techno",
         "hard",

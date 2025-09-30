@@ -7,7 +7,7 @@ import type {
   TextChannel,
 } from "discord.js";
 import { discordClient } from "../lib/discord";
-import { capitalize } from ".";
+import { capitalize, pad } from ".";
 
 export async function sendMessageToReleaseChannel(
   content: string | MessagePayload | MessageCreateOptions
@@ -35,13 +35,17 @@ export async function startReleaseThread(message: Message, catalog: string) {
   }
 }
 
-function fmtDate(d: Date | string) {
+function fmtDate(d: Date | string, includeTime = false) {
   const x = typeof d === "string" ? new Date(d) : d;
-
-  return `${SHORT_WEEKDAYS[x.getDay()]} ${String(x.getDate()).padStart(
+  let base = `${SHORT_WEEKDAYS[x.getDay()]} ${String(x.getDate()).padStart(
     2,
     "0"
   )} ${SHORT_MONTHS[x.getMonth()]}`;
+
+  if (includeTime) {
+    base += ` ${pad(x.getHours(), 2)}:${pad(x.getMinutes(), 2)}`;
+  }
+  return `${base} (Europe/Paris)`;
 }
 
 export function renderReleaseMessage(opts: {
@@ -73,6 +77,27 @@ export function renderReleaseMessage(opts: {
     "## ✅ **Tracklist**",
     tracklist,
   ].join("\n");
+}
+
+// TODO: type
+export function renderPremiereMessage(premiere: any) {
+  const lines = [
+    `# 🎧 **Première — ${premiere.title}**`,
+    "",
+    `🗓️ **Quand**: ${capitalize(fmtDate(premiere.scheduledAt, true))}`,
+    ...(premiere.audioUrl && [`🎵 **Audio**: ${premiere.audioUrl}`]),
+    ...(premiere.artworkUrl && [`🖼️ **Artwork**: ${premiere.artworkUrl}`]),
+  ];
+
+  if (premiere.scPublicUrl) {
+    lines.push(`🔗 **SoundCloud**: [public](${premiere.scPublicUrl})`);
+  } else if (premiere.scPrivateLink) {
+    lines.push(`🔗 **SoundCloud**: [privé](${premiere.scPrivateUrl})`);
+  } else {
+    lines.push(`🔗 **SoundCloud**: _à venir_`);
+  }
+  lines.push("", "## Description", "", premiere.description || "_(aucune)_");
+  return lines.join("\n");
 }
 
 // TODO: type

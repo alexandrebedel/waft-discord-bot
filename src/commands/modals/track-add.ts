@@ -30,6 +30,12 @@ export function buildTrackModal(interaction: WAFTCommandInteraction) {
     .setRequired(true)
     .setStyle(TextInputStyle.Short);
 
+  const descriptionInput = new TextInputBuilder()
+    .setCustomId("description")
+    .setLabel("Description")
+    .setRequired(true)
+    .setStyle(TextInputStyle.Paragraph);
+
   const dateInput = new TextInputBuilder()
     .setCustomId("release_date")
     .setLabel("Release date (YYYY-MM-DD ou DD/MM/YYYY)")
@@ -45,6 +51,7 @@ export function buildTrackModal(interaction: WAFTCommandInteraction) {
   modal.addComponents(
     new ActionRowBuilder<TextInputBuilder>().addComponents(artistInput),
     new ActionRowBuilder<TextInputBuilder>().addComponents(titleInput),
+    new ActionRowBuilder<TextInputBuilder>().addComponents(descriptionInput),
     new ActionRowBuilder<TextInputBuilder>().addComponents(dateInput),
     new ActionRowBuilder<TextInputBuilder>().addComponents(urlInput)
   );

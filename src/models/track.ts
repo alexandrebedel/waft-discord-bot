@@ -11,6 +11,7 @@ const TrackSchema = new Schema(
     index: { type: Number, required: true, min: 1 },
     artist: { type: String, required: true, trim: true },
     title: { type: String, required: true, trim: true },
+    description: { type: String, required: true },
     releaseDate: { type: Date },
 
     driveFileId: { type: String, index: true },
@@ -25,6 +26,7 @@ const TrackSchema = new Schema(
     },
     // Discord user id
     createdByUserId: { type: String },
+    soundcloudUrn: String,
   },
   { timestamps: true }
 );

@@ -107,18 +107,20 @@ export function renderReleaseMessage(opts: {
 }
 
 export async function renderPremiereMessage(premiere: Premiere) {
-  console.log("ici", premiere);
   const when = capitalize(fmtDate(premiere.scheduledAt, true));
   const fields: APIEmbedField[] = [
-    { name: "🗓️ Date", value: when, inline: false },
+    { name: "🗓️ Date", value: when },
     {
       name: "🎵 Audio",
       value: `[fichier](${premiere.audioUrl})`,
+      inline: true,
     },
     {
       name: "🖼️ Artwork",
       value: `[fichier](${premiere.artworkUrl})`,
+      inline: true,
     },
+    { name: "\u200B", value: "" },
     {
       name: "🌐 SoundCloud public",
       value: premiere.scPublicUrl

@@ -6,11 +6,11 @@ import { pad } from "@waft/utils";
 import { renderPremiereMessage, sendMessageTo } from "@waft/utils/discord";
 import { premiereCreateZ } from "@waft/validation";
 import {
-  AutocompleteInteraction,
+  type AutocompleteInteraction,
   type ModalSubmitInteraction,
   SlashCommandBuilder,
   type SlashCommandSubcommandsOnlyBuilder,
-  TextChannel,
+  type TextChannel,
 } from "discord.js";
 import { isValidObjectId } from "mongoose";
 import { buildPremiereCreateModal } from "../modals";
@@ -59,7 +59,6 @@ export default class PremiereCommand implements IPremiereCommand {
   public async autocomplete(interaction: AutocompleteInteraction) {
     const focused = interaction.options.getFocused(true);
 
-    console.log(focused);
     if (focused.name !== "id") {
       return;
     }

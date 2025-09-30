@@ -13,7 +13,11 @@ export const premiereCreateZ = z
       .string()
       .trim()
       .min(1, "`title` est requis")
-      .transform((t) => `${config.scPremierePrefix} ${t}`),
+      .transform((t) => {
+        const p = config.scPremierePrefix.trim();
+
+        return t.startsWith(p) ? t : `${p} ${t}`;
+      }),
     description: z.string().trim().min(1, "`description` est requis"),
     releaseDateStr: z.string().trim().min(1, "`release_date` est requis"),
     audioUrl: z

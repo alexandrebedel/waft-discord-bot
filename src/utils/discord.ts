@@ -1,6 +1,14 @@
-import { SHORT_MONTHS, SHORT_WEEKDAYS } from "@waft/constants";
-import { config } from "@waft/lib";
+import {
+  DISCORD_CHANNELS,
+  type DiscordChannels,
+  SHORT_MONTHS,
+  SHORT_WEEKDAYS,
+} from "@waft/constants";
+import type { Premiere } from "@waft/models";
 import type {
+  APIEmbed,
+  APIEmbedAuthor,
+  APIEmbedField,
   Message,
   MessageCreateOptions,
   MessagePayload,
@@ -8,11 +16,19 @@ import type {
 } from "discord.js";
 import { discordClient } from "../lib/discord";
 import { capitalize, pad } from ".";
+import { driveDirectImageUrl } from "./google";
 
-const channels = {
-  release: config.discordReleaseChannelId,
-  premieres: config.discordPremiereChannelId,
-} as const;
+export async function fetchUserToEmberAuthor(
+  userId: string
+): Promise<APIEmbedAuthor> {
+  try {
+    const user = await discordClient.users.fetch(userId);
+
+    return { name: user.displayName, icon_url: user.avatarURL() as string };
+  } catch {
+    return { name: "Inconnu" };
+  }
+}
 
 export async function sendMessageToChannel(
   id: string,
@@ -27,10 +43,10 @@ export async function sendMessageToChannel(
 }
 
 export function sendMessageTo(
-  channel: keyof typeof channels,
+  channel: DiscordChannels,
   content: string | MessagePayload | MessageCreateOptions
 ) {
-  return sendMessageToChannel(channels[channel], content);
+  return sendMessageToChannel(DISCORD_CHANNELS[channel], content);
 }
 
 export async function startReleaseThread(message: Message, catalog: string) {
@@ -90,25 +106,46 @@ export function renderReleaseMessage(opts: {
   ].join("\n");
 }
 
-// TODO: type
-export function renderPremiereMessage(premiere: any) {
-  const lines = [
-    `# ${premiere.title}**`,
-    "",
-    `🗓️ **Prévue pour**: ${capitalize(fmtDate(premiere.scheduledAt, true))}`,
-    ...(premiere.audioUrl && [`🎵 **Audio**: [fichier](${premiere.audioUrl})`]),
-    ...(premiere.artworkUrl && [`🖼️ **Artwork**: [fichier](${premiere.artworkUrl})`]),
+export async function renderPremiereMessage(premiere: Premiere) {
+  console.log("ici", premiere);
+  const when = capitalize(fmtDate(premiere.scheduledAt, true));
+  const fields: APIEmbedField[] = [
+    { name: "🗓️ Date", value: when, inline: false },
+    {
+      name: "🎵 Audio",
+      value: `[fichier](${premiere.audioUrl})`,
+    },
+    {
+      name: "🖼️ Artwork",
+      value: `[fichier](${premiere.artworkUrl})`,
+    },
+    {
+      name: "🌐 SoundCloud public",
+      value: premiere.scPublicUrl
+        ? `[lien](${premiere.scPublicUrl})`
+        : "_à venir_",
+      inline: true,
+    },
+    {
+      name: "🔒 SoundCloud privé",
+      value: premiere.scPrivateLink
+        ? `[lien](${premiere.scPrivateLink})`
+        : "_à venir_",
+      inline: true,
+    },
   ];
+  const embed: APIEmbed = {
+    title: `Première — ${premiere.title}`,
+    description: premiere.description,
+    author: await fetchUserToEmberAuthor(premiere.discordUserId),
+    color: 0xff7a00,
+    fields,
+    footer: { text: "Europe/Paris" },
+    image: { url: driveDirectImageUrl(premiere.artworkUrl) },
+    timestamp: new Date(premiere.scheduledAt).toISOString(),
+  };
 
-  if (premiere.scPublicUrl) {
-    lines.push(`🔗 **SoundCloud**: [public](${premiere.scPublicUrl})`);
-  } else if (premiere.scPrivateLink) {
-    lines.push(`🔗 **SoundCloud**: [privé](${premiere.scPrivateUrl})`);
-  } else {
-    lines.push(`🔗 **SoundCloud**: _à venir_`);
-  }
-  lines.push("## Description", "", premiere.description || "_(aucune)_");
-  return lines.join("\n");
+  return { embeds: [embed] };
 }
 
 // TODO: type

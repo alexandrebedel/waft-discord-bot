@@ -1,11 +1,16 @@
-import { model, Schema } from "mongoose";
+import { type InferSchemaType, model, Schema } from "mongoose";
+
+export type Premiere = InferSchemaType<typeof PremiereSchema>;
+export type PremiereStatus = Premiere["status"];
 
 const PremiereSchema = new Schema(
   {
     title: { type: String, required: true },
     description: { type: String, default: "" },
-    scheduledAt: { type: Date },
+    scheduledAt: { type: Date, required: true },
+
     discordMessageId: { type: String },
+    discordUserId: { type: String, required: true },
 
     artworkUrl: { type: String, required: true },
     audioUrl: { type: String, required: true },

@@ -1,8 +1,10 @@
+import { config } from "@waft/lib";
 import type { RouterTypes } from "bun";
 
 export type ReleaseType = (typeof RELEASE_TYPES)[number]["value"];
 export type LineType = (typeof LINE_TYPES)[number];
 export type SoundCloudPlaylistType = (typeof SC_PLAYLIST_TYPES)[number];
+export type DiscordChannels = keyof typeof DISCORD_CHANNELS;
 
 export const SHORT_WEEKDAYS = [
   "dim.",
@@ -54,3 +56,8 @@ export const SC_PLAYLIST_TYPES = [
   "COMPILATION",
   "SINGLE",
 ] as const;
+
+export const DISCORD_CHANNELS = {
+  release: config.discordReleaseChannelId,
+  premieres: config.discordPremiereChannelId,
+} as const;

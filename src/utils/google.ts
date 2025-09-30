@@ -29,3 +29,12 @@ export function extractDriveId(
     return { type: "unknown", id: undefined };
   }
 }
+
+export function driveDirectImageUrl(driveUrl: string) {
+  const ex = extractDriveId(driveUrl);
+
+  if (ex.type !== "file" || !ex.id) {
+    throw new Error("Lien Drive invalide.");
+  }
+  return `https://drive.google.com/thumbnail?id=${ex.id}&sz=w0-h0`;
+}

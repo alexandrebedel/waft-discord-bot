@@ -22,6 +22,9 @@ const envSchema = z
     DISCORD_RELEASE_CHANNEL_ID: z
       .string()
       .min(1, "DISCORD_RELEASE_CHANNEL_ID is required"),
+    DISCORD_PREMIERE_CHANNEL_ID: z
+      .string()
+      .min(1, "DISCORD_PREMIERE_CHANNEL_ID is required"),
     DISCORD_ADMIN_ROLE_ID: z
       .string()
       .min(1, "DISCORD_ADMIN_ROLE_ID is required"),
@@ -43,6 +46,7 @@ const envSchema = z
       discordGuildId: env.DISCORD_GUILD_ID,
       discordToken: env.DISCORD_TOKEN,
       discordReleaseChannelId: env.DISCORD_RELEASE_CHANNEL_ID,
+      discordPremiereChannelId: env.DISCORD_PREMIERE_CHANNEL_ID,
       discordAdminRoleId: env.DISCORD_ADMIN_ROLE_ID,
       scClientId: env.SC_CLIENT_ID,
       scClientSecret: env.SC_CLIENT_SECRET,

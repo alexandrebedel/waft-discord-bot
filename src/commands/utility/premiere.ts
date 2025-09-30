@@ -1,7 +1,7 @@
 import { CommandHandler } from "@waft/decorators";
 import { Premiere } from "@waft/models";
 import type { IWAFTCommand, WAFTCommandInteraction } from "@waft/types";
-import { renderPremiereMessage } from "@waft/utils/discord";
+import { renderPremiereMessage, sendMessageTo } from "@waft/utils/discord";
 import { premiereCreateZ } from "@waft/validation";
 import {
   type ModalSubmitInteraction,
@@ -51,10 +51,16 @@ export default class PremiereCommand implements IPremiereCommand {
         releaseDateStr: interaction.fields.getTextInputValue("release_date"),
       })
     );
+    const content = renderPremiereMessage(premiere);
+    const msg = await sendMessageTo("premieres", {
+      content,
+      flags: "SuppressEmbeds",
+    });
 
-    console.log(renderPremiereMessage(premiere));
+    premiere.discordMessageId = msg.id;
+    await premiere.save();
     return interaction.reply({
-      content: `✅ Première créée (draft).${""}`,
+      content: `✅ Première créée (draft) <#${msg.channelId}>.`,
       flags: "Ephemeral",
     });
   }

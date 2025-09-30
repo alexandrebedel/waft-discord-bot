@@ -7,7 +7,7 @@ import type { IWAFTCommand, WAFTCommandInteraction } from "@waft/types";
 import { getCatalog } from "@waft/utils";
 import {
   renderReleaseMessage,
-  sendMessageToReleaseChannel,
+  sendMessageTo,
   startReleaseThread,
 } from "@waft/utils/discord";
 import { type CreateReleaseZod, createReleaseZ } from "@waft/validation";
@@ -95,7 +95,7 @@ export default class ReleaseCommand implements IReleaseCommand {
       description,
     });
 
-    const message = await sendMessageToReleaseChannel({
+    const message = await sendMessageTo("release", {
       content: renderReleaseMessage({
         catalog: document.catalog,
         title: name,

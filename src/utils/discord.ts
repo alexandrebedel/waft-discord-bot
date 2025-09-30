@@ -9,17 +9,28 @@ import type {
 import { discordClient } from "../lib/discord";
 import { capitalize, pad } from ".";
 
-export async function sendMessageToReleaseChannel(
+const channels = {
+  release: config.discordReleaseChannelId,
+  premieres: config.discordPremiereChannelId,
+} as const;
+
+export async function sendMessageToChannel(
+  id: string,
   content: string | MessagePayload | MessageCreateOptions
 ) {
-  const channel = await discordClient.channels.fetch(
-    config.discordReleaseChannelId
-  );
+  const channel = await discordClient.channels.fetch(id);
 
   if (!channel || !channel.isTextBased()) {
-    throw new Error("❌ Channel not found or is not text-based");
+    throw new Error("Channel not found or is not text-based");
   }
   return await (channel as TextChannel).send(content);
+}
+
+export function sendMessageTo(
+  channel: keyof typeof channels,
+  content: string | MessagePayload | MessageCreateOptions
+) {
+  return sendMessageToChannel(channels[channel], content);
 }
 
 export async function startReleaseThread(message: Message, catalog: string) {
@@ -82,11 +93,11 @@ export function renderReleaseMessage(opts: {
 // TODO: type
 export function renderPremiereMessage(premiere: any) {
   const lines = [
-    `# 🎧 **Première — ${premiere.title}**`,
+    `# ${premiere.title}**`,
     "",
-    `🗓️ **Quand**: ${capitalize(fmtDate(premiere.scheduledAt, true))}`,
-    ...(premiere.audioUrl && [`🎵 **Audio**: ${premiere.audioUrl}`]),
-    ...(premiere.artworkUrl && [`🖼️ **Artwork**: ${premiere.artworkUrl}`]),
+    `🗓️ **Prévue pour**: ${capitalize(fmtDate(premiere.scheduledAt, true))}`,
+    ...(premiere.audioUrl && [`🎵 **Audio**: [fichier](${premiere.audioUrl})`]),
+    ...(premiere.artworkUrl && [`🖼️ **Artwork**: [fichier](${premiere.artworkUrl})`]),
   ];
 
   if (premiere.scPublicUrl) {
@@ -96,7 +107,7 @@ export function renderPremiereMessage(premiere: any) {
   } else {
     lines.push(`🔗 **SoundCloud**: _à venir_`);
   }
-  lines.push("", "## Description", "", premiere.description || "_(aucune)_");
+  lines.push("## Description", "", premiere.description || "_(aucune)_");
   return lines.join("\n");
 }
 

@@ -5,6 +5,7 @@ const PremiereSchema = new Schema(
     title: { type: String, required: true },
     description: { type: String, default: "" },
     scheduledAt: { type: Date },
+    discordMessageId: { type: String },
 
     artworkUrl: { type: String, required: true },
     audioUrl: { type: String, required: true },

@@ -1,5 +1,5 @@
 import { CommandHandler } from "@waft/decorators";
-import { gdrive } from "@waft/integrations";
+import { gdrive, soundcloud } from "@waft/integrations";
 import { config, discordClient } from "@waft/lib";
 import { Premiere } from "@waft/models";
 import type { IWAFTCommand, WAFTCommandInteraction } from "@waft/types";
@@ -114,6 +114,8 @@ export default class PremiereCommand implements IPremiereCommand {
       return;
     }
     const values = await this.checkValues(interaction);
+
+    await this.checkAudioFiles(values);
     const premiere = await Premiere.create({
       ...values,
       discordUserId: interaction.user.id,
@@ -129,7 +131,7 @@ export default class PremiereCommand implements IPremiereCommand {
     });
   }
 
-  @CommandHandler({ autoDefer: false, requireAdminRole: true })
+  @CommandHandler({ requireAdminRole: true })
   private async delete(interaction: WAFTCommandInteraction) {
     const id = interaction.options.getString("id", true);
 
@@ -163,7 +165,7 @@ export default class PremiereCommand implements IPremiereCommand {
     });
   }
 
-  @CommandHandler({ autoDefer: false, requireAdminRole: true })
+  @CommandHandler({ requireAdminRole: true })
   private async publish(interaction: WAFTCommandInteraction) {
     const id = interaction.options.getString("id", true);
 
@@ -172,6 +174,7 @@ export default class PremiereCommand implements IPremiereCommand {
     }
 
     const premiere = await Premiere.findById(id);
+
     if (!premiere) {
       throw new Error(`Première introuvable pour \`${id}\`.`);
     }
@@ -188,35 +191,16 @@ export default class PremiereCommand implements IPremiereCommand {
         "Cette première n'a pas de date planifiée (`scheduledAt`)."
       );
     }
+    const [audioMeta, _artworkMeta] = await this.checkAudioFiles(premiere);
+    const file = await gdrive.downloadDriveFileToTmp(audioMeta!.id as string);
+    const track = await soundcloud.uploadTrack({
+      title: premiere.title,
+      genre: "Techno",
+      tagList: config.scDefaultTrackTags,
+      ...file,
+    });
 
-    const audioEx = extractDriveId(premiere.audioUrl);
-    const artworkEx = extractDriveId(premiere.artworkUrl);
-
-    if (audioEx.type !== "file" || !audioEx.id) {
-      throw new Error("Lien Drive audio invalide (attendu: lien *fichier*).");
-    }
-    if (artworkEx.type !== "file" || !artworkEx.id) {
-      throw new Error("Lien Drive artwork invalide (attendu: lien *fichier*).");
-    }
-
-    const [audioMeta, artworkMeta] = await Promise.all([
-      gdrive.getFileMeta(audioEx.id),
-      gdrive.getFileMeta(artworkEx.id),
-    ]);
-
-    if (!gdrive.isLosslessAudio(audioMeta)) {
-      throw new Error(
-        "Le fichier audio n'est pas un lossless valide (WAV/AIFF/FLAC)."
-      );
-    }
-    if (!String(artworkMeta.mimeType || "").startsWith("image/")) {
-      throw new Error(
-        "Le fichier artwork n'est pas une image (mime image/* requis)."
-      );
-    }
-
-    // Upload + schedule sur SoundCloud (API intégration)
-    // On suppose que l'intégration expose cette méthode utilitaire.
+    console.log(track);
     // const result = await soundcloud.schedulePremiereFromDrive({
     //   title: premiere.title,
     //   description: premiere.description,
@@ -304,5 +288,36 @@ export default class PremiereCommand implements IPremiereCommand {
       );
     }
     return parsed;
+  }
+
+  private async checkAudioFiles(
+    premiere: Pick<Premiere, "audioUrl" | "artworkUrl">
+  ) {
+    const audioEx = extractDriveId(premiere.audioUrl);
+    const artworkEx = extractDriveId(premiere.artworkUrl);
+
+    if (audioEx.type !== "file" || !audioEx.id) {
+      throw new Error("Lien Drive audio invalide (attendu: lien *fichier*).");
+    }
+    if (artworkEx.type !== "file" || !artworkEx.id) {
+      throw new Error("Lien Drive artwork invalide (attendu: lien *fichier*).");
+    }
+
+    const [audioMeta, artworkMeta] = await Promise.all([
+      gdrive.getFileMeta(audioEx.id),
+      gdrive.getFileMeta(artworkEx.id),
+    ]);
+
+    if (!gdrive.isLosslessAudio(audioMeta)) {
+      throw new Error(
+        "Le fichier audio n'est pas un lossless valide (WAV/AIFF/FLAC)."
+      );
+    }
+    if (!String(artworkMeta.mimeType || "").startsWith("image/")) {
+      throw new Error(
+        "Le fichier artwork n'est pas une image (mime image/* requis)."
+      );
+    }
+    return [audioMeta, artworkMeta];
   }
 }

@@ -69,7 +69,7 @@ class GoogleDrive {
 
     signale.success(`[Drive] Downloaded ${name} -> ${tmpPath}`);
     return {
-      path: tmpPath,
+      filepath: tmpPath,
       name,
       mimeType: meta.data.mimeType ?? "application/octet-stream",
       size: meta.data.size ? Number(meta.data.size) : undefined,
